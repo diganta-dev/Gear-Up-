@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { getCookie } from "cookies-next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,10 +12,9 @@ import { IGear } from "@/types/gear";
 
 interface GearDatePickerProps {
   gear: IGear;
-  isLoggedIn: boolean;
 }
 
-export default function GearDatePicker({ gear, isLoggedIn }: GearDatePickerProps) {
+export default function GearDatePicker({ gear }: GearDatePickerProps) {
   const router = useRouter();
   
   // Format today's date for the min attribute of date inputs
@@ -61,7 +61,8 @@ export default function GearDatePicker({ gear, isLoggedIn }: GearDatePickerProps
       return;
     }
 
-    if (!isLoggedIn) {
+    const token = getCookie("accessToken");
+    if (!token) {
       toast.error("Please login to continue with your rental");
       router.push(`/login`);
       return;

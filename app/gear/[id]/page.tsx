@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { cookies } from "next/headers";
 import { getGearById } from "@/service/gear";
 import GearImageGallery from "@/components/shered/gear-image-gallery";
 import GearDatePicker from "@/components/shered/gear-date-picker";
@@ -32,10 +31,6 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
 
 export default async function GearDetailsPage(props: PageProps) {
   const params = await props.params;
-  
-  // Check if user is logged in using the existing cookie strategy
-  const cookieStore = await cookies();
-  const isLoggedIn = !!cookieStore.get("accessToken");
 
   const response = await getGearById(params.id);
   const gear = response?.data;
@@ -153,7 +148,7 @@ export default async function GearDetailsPage(props: PageProps) {
         {/* Right Column - Booking Card */}
         <div className="lg:col-span-1">
           <div className="sticky top-24">
-            <GearDatePicker gear={gear} isLoggedIn={isLoggedIn} />
+            <GearDatePicker gear={gear} />
           </div>
         </div>
       </div>
