@@ -12,7 +12,7 @@ interface GearImageGalleryProps {
 export default function GearImageGallery({ images, name }: GearImageGalleryProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
 
-  const fallbackImage = "https://placehold.co/800x600/png?text=No+Image";
+  const fallbackImage = "https://placehold.co/800x600.png?text=No+Image";
   const displayImages = images && images.length > 0 ? images : [fallbackImage];
 
   return (
