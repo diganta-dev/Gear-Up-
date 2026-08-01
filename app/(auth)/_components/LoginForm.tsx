@@ -3,12 +3,12 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import React, { useActionState, useEffect } from 'react';
-import { registerUser } from '../_actions/authAction';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { loginAction } from '../_actions/authAction';
 
 const LoginForm = () => {
-    const [state,action,pending]=useActionState(registerUser,false)
+    const [state,action,pending]=useActionState(loginAction,false)
     const route = useRouter()
     useEffect(() => {
   if (!state) return;

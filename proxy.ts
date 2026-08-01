@@ -1,23 +1,45 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtUtils } from "./utils/jwt";
+import { JwtPayload } from "jsonwebtoken";
+import { getNewAccessToken } from "./service/refreshToken";
+import { cookies } from "next/headers";
 
 const authRoutes = ["/login", "/register"];
 const publicRoutes = ["/", "/gear"];
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const accessToken = request.cookies.get("accessToken")?.value;
+  const cookieStore = await cookies();
+  let accessToken = cookieStore.get("accessToken")?.value;
+  const refreshToken = cookieStore.get("refreshToken")?.value;
 
   // Verify token if it exists
-  let decodedToken = accessToken
+  let decodedAccessToken = accessToken
     ? (await jwtUtils.verifyToken(
         accessToken,
         process.env.JWT_SECRET as string
       ) as { success?: boolean; role?: string })
     : null;
 
+     const decodedRefreshToken = refreshToken
+        ? (await jwtUtils.verifyToken(refreshToken, process.env.JWT_REFRESH_SECRET as string) as (JwtPayload & { success?: boolean; role?: string }))
+        : null;
+
+     if(!decodedAccessToken?.success && decodedRefreshToken?.success){
+        
+        // refresh token
+        const result = await getNewAccessToken()
+
+        if(result.success){
+            
+          cookieStore.set("accessToken",result.data.accessToken,{httpOnly:true,maxAge:60*60*24,sameSite:'lax'});   
+          accessToken =  result.data.accessToken
+          decodedAccessToken = await jwtUtils.verifyToken(accessToken as string, process.env.JWT_SECRET as string) as (JwtPayload & { success?: boolean; role?: string }) ;
+
+        }
+    }
   // If token is invalid/expired, clear the cookie and treat as unauthenticated
-  if (accessToken && !decodedToken?.success) {
+  if (accessToken && !decodedAccessToken?.success) {
     const response = NextResponse.redirect(new URL("/login", request.url));
     response.cookies.delete("accessToken");
     // Only redirect to login if current route is protected
@@ -37,10 +59,10 @@ export async function proxy(request: NextRequest) {
   }
 
   // Get user role
-  const userRole = decodedToken?.success ? decodedToken.role : null;
+  const userRole = decodedAccessToken?.success ? decodedAccessToken.role : null;
 
   // If logged in user tries to access auth routes (login/register), redirect to their dashboard
-  if (accessToken && decodedToken?.success && authRoutes.some((route) => pathname === route || pathname.startsWith(route + "/"))) {
+  if (accessToken && decodedAccessToken?.success && authRoutes.some((route) => pathname === route || pathname.startsWith(route + "/"))) {
     if (userRole === "ADMIN") {
       return NextResponse.redirect(new URL("/admin-dashboard", request.url));
     }

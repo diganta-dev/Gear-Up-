@@ -42,7 +42,7 @@ export default function Navbar({ user }: NavbarProps) {
     const router = useRouter()
     const [isPending, startTransition] = useTransition()
 
-    const currentUser = user?.success ? user.data?.user : null
+    const currentUser = user?.success ? (user.data?.user || user.data) : null
 
     const handleLogout = () => {
         startTransition(async () => {
