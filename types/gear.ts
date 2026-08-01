@@ -38,3 +38,11 @@ export interface IGearResponse {
   data: IGear[];
   meta: any | null;
 }
+
+export interface ICategoryResponse {
+  success: boolean;
+  statusCode: number;
+  message: string;
+  data: IGearCategory[];
+  meta: any | null;
+}
