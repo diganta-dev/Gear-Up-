@@ -24,11 +24,9 @@ export default function NotFound() {
         </p>
         
         <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Button asChild size="lg" className="w-full sm:w-auto h-12 px-8">
-            <Link href="/">
-              <Home className="mr-2 h-5 w-5" />
-              Return to Home
-            </Link>
+          <Button render={<Link href="/" />} size="lg" className="w-full sm:w-auto h-12 px-8">
+            <Home className="mr-2 h-5 w-5" />
+            Return to Home
           </Button>
         </div>
       </div>

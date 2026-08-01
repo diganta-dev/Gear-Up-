@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { getMe } from "@/service/getme";
 import Navbar from "@/components/shered/navbar";
 import Providers from "@/components/providers";
+import { IUser } from "@/types/user";
 
 const notoSansHeading = Noto_Sans({subsets:['latin'],variable:'--font-heading'});
 
@@ -18,7 +19,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-const user = await getMe()
+const user:IUser = await getMe()
   console.log(user)
   
   return (
@@ -29,7 +30,7 @@ const user = await getMe()
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <Providers>
-          <Navbar></Navbar>
+          <Navbar user={user}></Navbar>
           <Toaster position="top-right" richColors />
           {children}
         </Providers>
