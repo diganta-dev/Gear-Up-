@@ -28,7 +28,7 @@ export default function CheckoutForm({ gear, startDate, endDate, days, totalPric
     setIsSubmitting(true);
     try {
       const response = await createRental({
-        gearItemId: gear.id,
+        gearId: gear.id,
         startDate,
         endDate,
       });

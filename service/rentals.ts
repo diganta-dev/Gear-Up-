@@ -4,44 +4,28 @@ import { cookies } from "next/headers";
 
 const API_BASE_URL = process.env.BACKEND_API_URL || process.env.NEXT_PUBLIC_API_URL || "https://gearupshop.vercel.app";
 
-interface CreateRentalPayload {
-  gearId: string;
-  startDate: string;
-  endDate: string;
-}
-
-export const createRental = async (payload: CreateRentalPayload) => {
+export const getMyRentals = async () => {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get("accessToken")?.value;
 
   if (!accessToken) {
     return {
       success: false,
-      message: "You must be logged in to place a rental.",
+      message: "You must be logged in to view rentals.",
     };
   }
 
   try {
-    const requestBody = {
-      startDate: new Date(payload.startDate).toISOString(),
-      endDate: new Date(payload.endDate).toISOString(),
-      items: [{ gearItemId: payload.gearId, quantity: 1 }],
-    };
-
-    console.log("CREATE RENTAL REQUEST:", JSON.stringify(requestBody, null, 2));
-
     const res = await fetch(`${API_BASE_URL}/api/rentals`, {
-      method: "POST",
+      method: "GET",
       headers: {
         "Content-Type": "application/json",
         Cookie: `accessToken=${accessToken}`,
       },
-      body: JSON.stringify(requestBody),
       cache: "no-store",
     });
 
     const result = await res.json();
-    console.log("CREATE RENTAL RESPONSE:", JSON.stringify(result, null, 2));
     return result;
   } catch (_error) {
     return {

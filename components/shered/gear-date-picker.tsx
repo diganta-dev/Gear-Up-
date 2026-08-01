@@ -22,11 +22,18 @@ export default function GearDatePicker({ gear }: GearDatePickerProps) {
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
 
+  // Get the next day after a given date string (for end date minimum)
+  const getNextDay = (dateStr: string) => {
+    const d = new Date(dateStr);
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split('T')[0];
+  };
+
   const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newStart = e.target.value;
     setStartDate(newStart);
-    // If end date is before new start date, reset end date
-    if (endDate && new Date(endDate) < new Date(newStart)) {
+    // If end date is before or equal to new start date, reset end date
+    if (endDate && new Date(endDate) <= new Date(newStart)) {
       setEndDate("");
     }
   };
@@ -40,8 +47,8 @@ export default function GearDatePicker({ gear }: GearDatePickerProps) {
     // Calculate difference in time
     const differenceInTime = end.getTime() - start.getTime();
     
-    // Calculate difference in days (adding 1 because same day = 1 day of rental)
-    const differenceInDays = Math.ceil(differenceInTime / (1000 * 3600 * 24)) + 1;
+    // Calculate difference in days
+    const differenceInDays = Math.ceil(differenceInTime / (1000 * 3600 * 24));
     
     return differenceInDays > 0 ? differenceInDays : 0;
   };
@@ -56,7 +63,7 @@ export default function GearDatePicker({ gear }: GearDatePickerProps) {
     }
 
     if (days <= 0) {
-      toast.error("End date must be after or equal to start date");
+      toast.error("End date must be after start date");
       return;
     }
 
@@ -96,7 +103,7 @@ export default function GearDatePicker({ gear }: GearDatePickerProps) {
           <Input 
             id="end-date" 
             type="date" 
-            min={startDate || today}
+            min={startDate ? getNextDay(startDate) : today}
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
             disabled={!startDate || isUnavailable}

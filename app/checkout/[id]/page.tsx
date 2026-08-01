@@ -48,13 +48,13 @@ export default async function CheckoutPage(props: PageProps) {
   const startDate = new Date(startDateStr);
   const endDate = new Date(endDateStr);
   
-  if (endDate < startDate) {
-    // Invalid date range
+  if (endDate <= startDate) {
+    // Invalid date range — end must be strictly after start
     redirect(`/gear/${params.id}`);
   }
 
   const differenceInTime = endDate.getTime() - startDate.getTime();
-  const days = Math.ceil(differenceInTime / (1000 * 3600 * 24)) + 1;
+  const days = Math.ceil(differenceInTime / (1000 * 3600 * 24));
   const totalPrice = days * gear.dailyRentalPrice;
 
   return (
