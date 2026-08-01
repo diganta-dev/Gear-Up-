@@ -20,6 +20,15 @@ export interface IRental {
   createdAt: string;
   updatedAt: string;
   gearItem: IGear;
+  payment?: {
+    id: string;
+    status: string;
+    transactionId?: string;
+    amount?: number;
+    [key: string]: any;
+  } | null;
+  items?: any[];
+  customer?: any;
 }
 
 export interface IRentalResponse {

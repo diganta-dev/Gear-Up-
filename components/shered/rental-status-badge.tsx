@@ -5,6 +5,11 @@ interface RentalStatusBadgeProps {
   status: RentalStatus | string;
 }
 
+/**
+ * Rental Order Flow:
+ * PLACED → CONFIRMED → PAID → PICKED_UP → RETURNED
+ *       ↘ CANCELLED
+ */
 export default function RentalStatusBadge({ status }: RentalStatusBadgeProps) {
   switch (status) {
     case "PLACED":
@@ -12,7 +17,7 @@ export default function RentalStatusBadge({ status }: RentalStatusBadgeProps) {
     case "CONFIRMED":
       return <Badge className="bg-blue-500 hover:bg-blue-600">Confirmed</Badge>;
     case "PAID":
-      return <Badge className="bg-purple-500 hover:bg-purple-600">Paid</Badge>;
+      return <Badge className="bg-purple-600 hover:bg-purple-700">Paid</Badge>;
     case "PICKED_UP":
       return <Badge className="bg-emerald-500 hover:bg-emerald-600">Picked Up</Badge>;
     case "RETURNED":

@@ -35,9 +35,13 @@ export default function CheckoutForm({ gear, startDate, endDate, days, totalPric
 
       if (response.success) {
         toast.success("Rental order placed successfully!");
-        // The requirement says redirect to customer order details or appropriate payment page.
-        // For now, redirecting to the customer dashboard where orders are listed (Part 7 will build this)
-        router.push("/dashboard");
+        const newRentalId = response.data?.id || response.data?.rentalId;
+        
+        if (newRentalId) {
+          router.push(`/dashboard/customer/orders/${newRentalId}/pay`);
+        } else {
+          router.push("/dashboard");
+        }
       } else {
         toast.error(response.message || "Failed to place rental order");
         setIsSubmitting(false);
