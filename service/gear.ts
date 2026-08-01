@@ -1,5 +1,5 @@
 import { API_BASE_URL } from "@/lib/api-client";
-import { IGearResponse, ICategoryResponse } from "@/types/gear";
+import { IGearResponse, ICategoryResponse, ISingleGearResponse } from "@/types/gear";
 
 export const getFeaturedGear = async (): Promise<IGearResponse | null> => {
   try {
@@ -58,6 +58,24 @@ export const getCategories = async (): Promise<ICategoryResponse | null> => {
     const res = await fetch(`${API_BASE_URL}/api/categories`, {
       next: {
         revalidate: 3600, // Cache for 1 hour
+      },
+    });
+    
+    if (!res.ok) {
+      return null;
+    }
+    
+    return await res.json();
+  } catch (_error) {
+    return null;
+  }
+};
+
+export const getGearById = async (id: string): Promise<ISingleGearResponse | null> => {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/gear/${id}`, {
+      next: {
+        revalidate: 60, // Cache for 60 seconds
       },
     });
     

@@ -12,6 +12,21 @@ export interface IGearProvider {
   profileImage: string | null;
 }
 
+export interface IGearReview {
+  id: string;
+  customerId: string;
+  gearItemId: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+  updatedAt: string;
+  customer: {
+    id: string;
+    name: string;
+    profileImage: string | null;
+  };
+}
+
 export interface IGear {
   id: string;
   providerId: string;
@@ -29,6 +44,7 @@ export interface IGear {
   updatedAt: string;
   category: IGearCategory;
   provider: IGearProvider;
+  reviews?: IGearReview[];
 }
 
 export interface IGearResponse {
@@ -36,6 +52,14 @@ export interface IGearResponse {
   statusCode: number;
   message: string;
   data: IGear[];
+  meta: any | null;
+}
+
+export interface ISingleGearResponse {
+  success: boolean;
+  statusCode: number;
+  message: string;
+  data: IGear;
   meta: any | null;
 }
 
