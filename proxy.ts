@@ -67,7 +67,7 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(new URL("/admin-dashboard", request.url));
     }
     if (userRole === "PROVIDER") {
-      return NextResponse.redirect(new URL("/provider-dashboard", request.url));
+      return NextResponse.redirect(new URL("/dashboard/provider", request.url));
     }
     // Default: CUSTOMER or any other role
     return NextResponse.redirect(new URL("/dashboard", request.url));
@@ -85,7 +85,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Role-based access control (check more specific routes first!)
+  // Role-based access control
   if (pathname.startsWith("/admin-dashboard") && userRole !== "ADMIN") {
     return NextResponse.redirect(new URL("/", request.url));
   }
@@ -93,7 +93,6 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/", request.url));
   }
   if (pathname.startsWith("/dashboard") && userRole !== "CUSTOMER") {
-    // Make sure /dashboard doesn't catch /dashboard-admin etc.
     return NextResponse.redirect(new URL("/", request.url));
   }
 

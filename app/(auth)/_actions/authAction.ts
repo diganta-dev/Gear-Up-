@@ -32,22 +32,20 @@ export  const loginAction = async (prevState : LoginState,formData: FormData) =>
         cookieStore.set("accessToken",result.data.accessToken,{httpOnly:true,secure:isProduction,maxAge:60*60*24,sameSite:'lax'})
         cookieStore.set("refreshToken",result.data.refreshToken,{httpOnly:true,secure:isProduction,maxAge:60*60*24*7,sameSite:'lax'})
         const decodedToken = jwt.decode(result.data.accessToken) as JwtPayload;
-        if(decodedToken?.role === "ADMIN"){
-            redirect('/admin-dashboard')
+        const userRole = (decodedToken?.role || result.data?.user?.role || result.data?.role || "").toUpperCase();
+
+        if (userRole === "ADMIN") {
+          redirect("/admin-dashboard");
+        } else if (userRole === "PROVIDER") {
+          redirect("/dashboard/provider");
+        } else if (userRole === "CUSTOMER") {
+          redirect("/dashboard");
+        } else {
+          redirect("/dashboard");
         }
-        else if(decodedToken?.role === "CUSTOMER"){
-            redirect('/dashboard')
-        }
-        else if(decodedToken?.role==="PROVIDER"){
-            redirect('/provider-dashboard')
-        }
-        else{
-            redirect('/login')
-        } 
-        
     }
-    return result
-}
+    return result;
+};
 
 export const registerAction = async (data: { name: string; email: string; password: string; role: string }) => {
     const res = await fetch(`${process.env.BACKEND_API_URL}/api/auth/register`, {
@@ -59,24 +57,23 @@ export const registerAction = async (data: { name: string; email: string; passwo
     });
     const result = await res.json();
     
-    if(result.success){
-        const cookieStore = await cookies()
+    if (result.success) {
+        const cookieStore = await cookies();
         const isProduction = process.env.NODE_ENV === "production";
-        cookieStore.set("accessToken",result.data.accessToken,{httpOnly:true,secure:isProduction,maxAge:60*60*24,sameSite:'lax'})
-        cookieStore.set("refreshToken",result.data.refreshToken,{httpOnly:true,secure:isProduction,maxAge:60*60*24*7,sameSite:'lax'})
+        cookieStore.set("accessToken", result.data.accessToken, { httpOnly: true, secure: isProduction, maxAge: 60 * 60 * 24, sameSite: "lax" });
+        cookieStore.set("refreshToken", result.data.refreshToken, { httpOnly: true, secure: isProduction, maxAge: 60 * 60 * 24 * 7, sameSite: "lax" });
         const decodedToken = jwt.decode(result.data.accessToken) as JwtPayload;
-        if(decodedToken?.role === "ADMIN"){
-            redirect('/admin-dashboard')
+        const userRole = (decodedToken?.role || result.data?.user?.role || result.data?.role || data.role || "").toUpperCase();
+
+        if (userRole === "ADMIN") {
+          redirect("/admin-dashboard");
+        } else if (userRole === "PROVIDER") {
+          redirect("/dashboard/provider");
+        } else if (userRole === "CUSTOMER") {
+          redirect("/dashboard");
+        } else {
+          redirect("/dashboard");
         }
-        else if(decodedToken?.role === "CUSTOMER"){
-            redirect('/dashboard')
-        }
-        else if(decodedToken?.role==="PROVIDER"){
-            redirect('/provider-dashboard')
-        }
-        else{
-            redirect('/login')
-        } 
     }
 
     return result;

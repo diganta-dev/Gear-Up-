@@ -1,14 +1,13 @@
+import { getMe } from "@/service/getme";
+import DashboardShell from "@/components/shered/dashboard-shell";
 
-
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <div className="flex min-h-screen flex-col">
-     
-      <main className="flex-1 container mx-auto px-4 py-8">{children}</main>
-    </div>
-  );
+  const userRes = await getMe();
+  const user = userRes?.data?.user || userRes?.data;
+
+  return <DashboardShell user={user}>{children}</DashboardShell>;
 }
