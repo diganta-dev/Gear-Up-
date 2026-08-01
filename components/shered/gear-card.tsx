@@ -4,6 +4,7 @@ import { IGear } from "@/types/gear";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { getValidImageUrl } from "@/lib/utils";
 
 interface GearCardProps {
   gear: IGear;
@@ -14,7 +15,7 @@ export default function GearCard({ gear }: GearCardProps) {
     <Card className="flex flex-col overflow-hidden transition-all hover:shadow-md h-full">
       <div className="relative aspect-video w-full overflow-hidden bg-muted">
         <Image
-          src={gear.images?.[0] || "https://placehold.co/600x400?text=No+Image"}
+          src={getValidImageUrl(gear.images?.[0])}
           alt={gear.name}
           fill
           className="object-cover transition-transform hover:scale-105"

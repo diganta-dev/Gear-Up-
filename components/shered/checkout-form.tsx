@@ -10,6 +10,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Separator } from "@/components/ui/separator";
 import { IGear } from "@/types/gear";
 import { createRental } from "@/service/rental";
+import { getValidImageUrl } from "@/lib/utils";
 
 interface CheckoutFormProps {
   gear: IGear;
@@ -67,7 +68,7 @@ export default function CheckoutForm({ gear, startDate, endDate, days, totalPric
             <CardContent className="p-4 flex flex-col sm:flex-row gap-4">
               <div className="relative h-24 w-24 shrink-0 rounded-lg overflow-hidden border bg-muted">
                 <Image
-                  src={gear.images?.[0] || "https://placehold.co/400x400?text=No+Image"}
+                  src={getValidImageUrl(gear.images?.[0])}
                   alt={gear.name}
                   fill
                   className="object-cover"

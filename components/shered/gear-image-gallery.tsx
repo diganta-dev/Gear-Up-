@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { cn } from "@/lib/utils";
+import { cn, getValidImageUrl } from "@/lib/utils";
 
 interface GearImageGalleryProps {
   images: string[];
@@ -12,7 +12,7 @@ interface GearImageGalleryProps {
 export default function GearImageGallery({ images, name }: GearImageGalleryProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
 
-  const fallbackImage = "https://placehold.co/800x600?text=No+Image";
+  const fallbackImage = "https://placehold.co/800x600/png?text=No+Image";
   const displayImages = images && images.length > 0 ? images : [fallbackImage];
 
   return (
@@ -20,7 +20,7 @@ export default function GearImageGallery({ images, name }: GearImageGalleryProps
       {/* Main Image */}
       <div className="relative aspect-video w-full overflow-hidden rounded-xl border bg-muted">
         <Image
-          src={displayImages[selectedIndex]}
+          src={getValidImageUrl(displayImages[selectedIndex])}
           alt={`${name} - Main View`}
           fill
           className="object-cover transition-opacity duration-300"
@@ -42,7 +42,7 @@ export default function GearImageGallery({ images, name }: GearImageGalleryProps
               )}
             >
               <Image
-                src={img}
+                src={getValidImageUrl(img)}
                 alt={`${name} - Thumbnail ${index + 1}`}
                 fill
                 className="object-cover"
