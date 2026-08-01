@@ -11,7 +11,7 @@ export async function proxy(request: NextRequest) {
   // If user is logged in and tries to access auth routes, redirect to dashboard
   if (authRoutes.some((route) => pathname.startsWith(route))) {
     if (accessToken && !isTokenExpired(accessToken)) {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
+      // return NextResponse.redirect(new URL("/dashboard", request.url));
     }
     return NextResponse.next();
   }
@@ -19,7 +19,7 @@ export async function proxy(request: NextRequest) {
   // If user is not logged in and tries to access protected routes
   if (protectedRoutes.some((route) => pathname.startsWith(route))) {
     if (!accessToken || isTokenExpired(accessToken)) {
-      return NextResponse.redirect(new URL("/login", request.url));
+      // return NextResponse.redirect(new URL("/login", request.url));
     }
     return NextResponse.next();
   }

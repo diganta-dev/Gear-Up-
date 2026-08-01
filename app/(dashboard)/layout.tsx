@@ -1,4 +1,4 @@
-import Navbar from "@/components/shered/navbar";
+
 
 export default function DashboardLayout({
   children,
