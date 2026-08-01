@@ -89,10 +89,10 @@ export async function proxy(request: NextRequest) {
   if (pathname.startsWith("/admin-dashboard") && userRole !== "ADMIN") {
     return NextResponse.redirect(new URL("/", request.url));
   }
-  if (pathname.startsWith("/provider-dashboard") && userRole !== "PROVIDER") {
+  if (pathname.startsWith("/provider-dashboard") && userRole !== "PROVIDER" && userRole !== "ADMIN") {
     return NextResponse.redirect(new URL("/", request.url));
   }
-  if (pathname.startsWith("/dashboard") && userRole !== "CUSTOMER") {
+  if (pathname.startsWith("/dashboard") && userRole !== "CUSTOMER" && userRole !== "ADMIN") {
     return NextResponse.redirect(new URL("/", request.url));
   }
 

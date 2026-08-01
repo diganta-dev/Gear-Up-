@@ -22,6 +22,7 @@ import {
   AlertTriangle,
   X,
   ExternalLink,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -240,6 +241,17 @@ export default function GearModerationTable({ initialGear }: GearModerationTable
                           Inspect
                         </Button>
 
+                        <Link href={`/provider-dashboard/gear/${item.id}/edit`}>
+                          <Button
+                            size="xs"
+                            variant="outline"
+                            className="h-8 px-2.5 text-xs font-semibold text-amber-700 border-amber-300 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800"
+                          >
+                            <Pencil className="w-3.5 h-3.5 mr-1" />
+                            Edit
+                          </Button>
+                        </Link>
+
                         <Button
                           size="xs"
                           variant="destructive"
@@ -368,14 +380,25 @@ export default function GearModerationTable({ initialGear }: GearModerationTable
                 View Public Page <ExternalLink className="w-3.5 h-3.5" />
               </Link>
 
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setInspectedGear(null)}
-                className="h-8 px-4 text-xs"
-              >
-                Close
-              </Button>
+              <div className="flex items-center gap-2">
+                <Link href={`/provider-dashboard/gear/${inspectedGear.id}/edit`}>
+                  <Button
+                    size="sm"
+                    className="h-8 px-3 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white"
+                  >
+                    <Pencil className="w-3.5 h-3.5 mr-1" /> Edit Gear
+                  </Button>
+                </Link>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setInspectedGear(null)}
+                  className="h-8 px-4 text-xs"
+                >
+                  Close
+                </Button>
+              </div>
             </div>
           </div>
         </div>

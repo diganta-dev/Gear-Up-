@@ -261,7 +261,8 @@ export default function ProviderGearForm({ initialData, categories, isEdit = fal
                 disabled={isSubmitting}
               >
                 <option value="AVAILABLE" className="dark:bg-background">AVAILABLE</option>
-                <option value="UNAVAILABLE" className="dark:bg-background">UNAVAILABLE</option>
+                <option value="OUT_OF_STOCK" className="dark:bg-background">OUT OF STOCK</option>
+                <option value="MAINTENANCE" className="dark:bg-background">MAINTENANCE</option>
               </select>
             </div>
 

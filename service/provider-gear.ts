@@ -18,6 +18,7 @@ export interface CreateGearPayload {
 }
 
 import { revalidatePath, revalidateTag } from "next/cache";
+import { getMe } from "@/service/getme";
 
 export const getProviderGear = async (): Promise<IGearResponse | null> => {
   const cookieStore = await cookies();
@@ -28,30 +29,26 @@ export const getProviderGear = async (): Promise<IGearResponse | null> => {
   }
 
   try {
-    // Attempt provider specific endpoint first
-    const res = await fetch(`${API_BASE_URL}/api/gear/my-gear`, {
+    // Get current user to find their provider ID
+    const meRes = await getMe();
+    const user = meRes?.data?.user || meRes?.data;
+    const providerId = user?.id;
+
+    // Fetch only this provider's gear using providerId query param
+    const url = providerId
+      ? `${API_BASE_URL}/api/gear?providerId=${providerId}`
+      : `${API_BASE_URL}/api/gear`;
+
+    const res = await fetch(url, {
       headers: {
         "Content-Type": "application/json",
         Cookie: `accessToken=${accessToken}`,
       },
-      next: { revalidate: 15, tags: ["provider-gear"] },
+      cache: "no-store",
     });
 
     if (res.ok) {
       return await res.json();
-    }
-
-    // Fallback if my-gear endpoint doesn't exist
-    const fallbackRes = await fetch(`${API_BASE_URL}/api/gear`, {
-      headers: {
-        "Content-Type": "application/json",
-        Cookie: `accessToken=${accessToken}`,
-      },
-      next: { revalidate: 15, tags: ["provider-gear"] },
-    });
-
-    if (fallbackRes.ok) {
-      return await fallbackRes.json();
     }
     return null;
   } catch (error) {

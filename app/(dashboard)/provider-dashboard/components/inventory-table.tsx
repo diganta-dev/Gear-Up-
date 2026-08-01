@@ -53,7 +53,7 @@ export default function InventoryTable({ initialGear }: InventoryTableProps) {
   );
 
   const handleToggleAvailability = async (id: string, currentStatus: string) => {
-    const newStatus = currentStatus === "AVAILABLE" ? "UNAVAILABLE" : "AVAILABLE";
+    const newStatus = currentStatus === "AVAILABLE" ? "OUT_OF_STOCK" : "AVAILABLE";
     setTogglingId(id);
     try {
       const response = await updateProviderGear(id, { availability: newStatus });
