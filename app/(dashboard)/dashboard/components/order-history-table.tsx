@@ -66,6 +66,7 @@ export default function OrderHistoryTable({ rentals }: OrderHistoryTableProps) {
                       alt={rental.gearItem?.name || "Gear"}
                       fill
                       className="object-cover"
+                      sizes="48px"
                     />
                   </div>
                   <div>
@@ -122,6 +123,7 @@ export default function OrderHistoryTable({ rentals }: OrderHistoryTableProps) {
                           alt={rental.gearItem?.name || "Gear"}
                           fill
                           className="object-cover"
+                          sizes="40px"
                         />
                       </div>
                       <span className="font-medium">{rental.gearItem?.name}</span>

@@ -72,6 +72,7 @@ export default function CheckoutForm({ gear, startDate, endDate, days, totalPric
                   alt={gear.name}
                   fill
                   className="object-cover"
+                  sizes="96px"
                 />
               </div>
               <div className="flex flex-col justify-center">
