@@ -71,7 +71,7 @@ export default function Navbar({ user }: NavbarProps) {
             >
                 {/* Logo */}
                 <Link href="/" className="text-lg font-semibold tracking-tight">
-                    Prisma Press
+                    Gear Up
                 </Link>
 
                 {/* Desktop nav links */}
@@ -183,4 +183,4 @@ export default function Navbar({ user }: NavbarProps) {
             </nav>
         </header>
     )
-}
+} 

@@ -1,18 +1,14 @@
-import { jwtDecode } from "jwt-decode";
-import { IDecodedToken } from "@/types/user";
+import { jwtVerify } from "jose";
 
-export function decodeToken(token: string): IDecodedToken | null {
+const verifyToken = async (token: string, secret: string) => {
   try {
-    return jwtDecode<IDecodedToken>(token);
-  } catch {
-    return null;
+    const encodedSecret = new TextEncoder().encode(secret);
+    const { payload } = await jwtVerify(token, encodedSecret);
+    return { success: true, ...payload };
+  } catch (error: any) {
+    console.log("JWT Verification Error:", error.message);
+    return { success: false, error: error.message };
   }
 }
 
-export function isTokenExpired(token: string): boolean {
-  const decoded = decodeToken(token);
-  if (!decoded) return true;
-
-  const currentTime = Math.floor(Date.now() / 1000);
-  return decoded.exp < currentTime;
-}
+export const jwtUtils = { verifyToken };

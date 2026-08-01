@@ -18,8 +18,8 @@ const LoginForm = () => {
     const role = (state as any).role;
     if (role === "admin") {
       route.push('/admin-dashboard');
-    } else if (role === "author") {
-      route.push('/author-dashboard');
+    } else if (role === "provider") {
+      route.push('/provider-dashboard');
     } else {
       route.push('/dashboard');
     }
