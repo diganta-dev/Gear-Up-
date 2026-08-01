@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   CheckCircle2,
   PackageCheck,
@@ -11,6 +11,8 @@ import {
   Calendar,
   User,
   ShoppingBag,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 import { updateProviderOrderStatus } from "@/service/rentals";
@@ -32,11 +34,19 @@ interface ProviderOrdersTableProps {
   initialRentals: any[];
 }
 
+const ITEMS_PER_PAGE = 6;
+
 export default function ProviderOrdersTable({ initialRentals }: ProviderOrdersTableProps) {
   const [rentals, setRentals] = useState<any[]>(initialRentals);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset to page 1 when search or filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter]);
 
   const handleStatusUpdate = async (id: string, newStatus: string, label: string) => {
     setUpdatingId(id);
@@ -80,6 +90,12 @@ export default function ProviderOrdersTable({ initialRentals }: ProviderOrdersTa
 
     return matchesSearch && matchesStatus;
   });
+
+  const totalPages = Math.ceil(filteredRentals.length / ITEMS_PER_PAGE) || 1;
+  const paginatedRentals = filteredRentals.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
   return (
     <Card className="shadow-md">
@@ -135,146 +151,200 @@ export default function ProviderOrdersTable({ initialRentals }: ProviderOrdersTa
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Order Info</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Gear Item</TableHead>
-                  <TableHead>Rental Period</TableHead>
-                  <TableHead>Total Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredRentals.map((order) => {
-                  const status = (order.status || "PLACED").toUpperCase();
-                  // Support both field naming conventions from backend
-                  const customerObj = order.user || order.customer || {};
-                  const customer = {
-                    name: customerObj.name || order.customerName || "Customer",
-                    email: customerObj.email || order.customerEmail || "",
-                  };
-                  const gearObj = order.gear || order.gearItem || {};
-                  const gear = {
-                    name: gearObj.name || order.gearName || "Equipment",
-                  };
+          <>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Order Info</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead>Gear Item</TableHead>
+                    <TableHead>Rental Period</TableHead>
+                    <TableHead>Total Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedRentals.map((order) => {
+                    const status = (order.status || "PLACED").toUpperCase();
+                    // Support both field naming conventions from backend
+                    const customerObj = order.user || order.customer || {};
+                    const customer = {
+                      name: customerObj.name || order.customerName || "Customer",
+                      email: customerObj.email || order.customerEmail || "",
+                    };
+                    const gearObj = order.gear || order.gearItem || {};
+                    const gear = {
+                      name: gearObj.name || order.gearName || "Equipment",
+                    };
 
-                  let startDateStr = "";
-                  let endDateStr = "";
-                  try {
-                    if (order.startDate) startDateStr = new Date(order.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-                    if (order.endDate) endDateStr = new Date(order.endDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-                  } catch {
-                    startDateStr = order.startDate || "";
-                    endDateStr = order.endDate || "";
-                  }
+                    let startDateStr = "";
+                    let endDateStr = "";
+                    try {
+                      if (order.startDate) startDateStr = new Date(order.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+                      if (order.endDate) endDateStr = new Date(order.endDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+                    } catch {
+                      startDateStr = order.startDate || "";
+                      endDateStr = order.endDate || "";
+                    }
 
-                  return (
-                    <TableRow key={order.id}>
-                      <TableCell className="font-mono text-xs text-muted-foreground">
-                        #{String(order.id).slice(-6)}
-                      </TableCell>
+                    return (
+                      <TableRow key={order.id}>
+                        <TableCell className="font-mono text-xs text-muted-foreground">
+                          #{String(order.id).slice(-6)}
+                        </TableCell>
 
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <User className="w-4 h-4 text-muted-foreground shrink-0" />
-                          <div>
-                            <p className="font-semibold text-sm line-clamp-1">{customer.name || "User"}</p>
-                            {customer.email && (
-                              <p className="text-xs text-muted-foreground">{customer.email}</p>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <User className="w-4 h-4 text-muted-foreground shrink-0" />
+                            <div>
+                              <p className="font-semibold text-sm line-clamp-1">{customer.name}</p>
+                              {customer.email && (
+                                <p className="text-xs text-muted-foreground">{customer.email}</p>
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
+
+                        <TableCell className="font-medium text-sm">
+                          {gear.name}
+                        </TableCell>
+
+                        <TableCell className="text-xs">
+                          <div className="flex items-center gap-1.5 text-muted-foreground">
+                            <Calendar className="w-3.5 h-3.5 shrink-0" />
+                            <span>
+                              {startDateStr} - {endDateStr}
+                            </span>
+                          </div>
+                        </TableCell>
+
+                        <TableCell className="font-bold text-sm">
+                          ${order.totalAmount ?? order.totalPrice ?? 0}
+                        </TableCell>
+
+                        <TableCell>
+                          <RentalStatusBadge status={status} />
+                        </TableCell>
+
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {updatingId === order.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                            ) : (
+                              <>
+                                {status === "PLACED" && (
+                                  <>
+                                    <Button
+                                      size="xs"
+                                      variant="default"
+                                      onClick={() => handleStatusUpdate(order.id, "CONFIRMED", "Confirmed")}
+                                    >
+                                      <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Confirm
+                                    </Button>
+                                    <Button
+                                      size="xs"
+                                      variant="outline"
+                                      className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                                      onClick={() => handleStatusUpdate(order.id, "CANCELLED", "Cancelled")}
+                                    >
+                                      <XCircle className="w-3.5 h-3.5 mr-1" /> Cancel
+                                    </Button>
+                                  </>
+                                )}
+
+                                {status === "CONFIRMED" && (
+                                  <span className="text-xs text-muted-foreground italic">
+                                    Awaiting payment
+                                  </span>
+                                )}
+
+                                {status === "PAID" && (
+                                  <Button
+                                    size="xs"
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                    onClick={() => handleStatusUpdate(order.id, "PICKED_UP", "Picked Up")}
+                                  >
+                                    <PackageCheck className="w-3.5 h-3.5 mr-1" /> Mark Picked Up
+                                  </Button>
+                                )}
+
+                                {status === "PICKED_UP" && (
+                                  <Button
+                                    size="xs"
+                                    variant="secondary"
+                                    onClick={() => handleStatusUpdate(order.id, "RETURNED", "Returned")}
+                                  >
+                                    <RotateCcw className="w-3.5 h-3.5 mr-1" /> Mark Returned
+                                  </Button>
+                                )}
+
+                                {(status === "RETURNED" || status === "CANCELLED") && (
+                                  <span className="text-xs text-muted-foreground">-</span>
+                                )}
+                              </>
                             )}
                           </div>
-                        </div>
-                      </TableCell>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
 
-                      <TableCell>
-                        <p className="font-medium text-sm line-clamp-1">{gear.name}</p>
-                      </TableCell>
+            {/* Pagination Bar */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t text-sm">
+              <p className="text-xs text-muted-foreground">
+                Showing{" "}
+                <span className="font-semibold text-foreground">
+                  {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, filteredRentals.length)}
+                </span>{" "}
+                to{" "}
+                <span className="font-semibold text-foreground">
+                  {Math.min(currentPage * ITEMS_PER_PAGE, filteredRentals.length)}
+                </span>{" "}
+                of <span className="font-semibold text-foreground">{filteredRentals.length}</span> orders
+              </p>
 
-                      <TableCell className="text-xs">
-                        <div className="flex items-center gap-1.5 text-muted-foreground">
-                          <Calendar className="w-3.5 h-3.5 shrink-0" />
-                          <span>
-                            {startDateStr} - {endDateStr}
-                          </span>
-                        </div>
-                      </TableCell>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="h-8 px-2.5 text-xs"
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" /> Previous
+                </Button>
 
-                      <TableCell className="font-bold text-sm">
-                        ${order.totalAmount ?? order.totalPrice ?? 0}
-                      </TableCell>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                    <Button
+                      key={pageNum}
+                      variant={currentPage === pageNum ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(pageNum)}
+                      className="h-8 w-8 text-xs p-0"
+                    >
+                      {pageNum}
+                    </Button>
+                  ))}
+                </div>
 
-                      <TableCell>
-                        <RentalStatusBadge status={status} />
-                      </TableCell>
-
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          {updatingId === order.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                          ) : (
-                            <>
-                              {status === "PLACED" && (
-                                <>
-                                  <Button
-                                    size="xs"
-                                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                                    onClick={() => handleStatusUpdate(order.id, "CONFIRMED", "Confirmed")}
-                                  >
-                                    <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Confirm
-                                  </Button>
-                                  <Button
-                                    size="xs"
-                                    variant="destructive"
-                                    onClick={() => handleStatusUpdate(order.id, "CANCELLED", "Cancelled")}
-                                  >
-                                    <XCircle className="w-3.5 h-3.5 mr-1" /> Cancel
-                                  </Button>
-                                </>
-                              )}
-
-                              {status === "CONFIRMED" && (
-                                <span className="text-xs text-muted-foreground italic">
-                                  Awaiting payment
-                                </span>
-                              )}
-
-                              {status === "PAID" && (
-                                <Button
-                                  size="xs"
-                                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                                  onClick={() => handleStatusUpdate(order.id, "PICKED_UP", "Picked Up")}
-                                >
-                                  <PackageCheck className="w-3.5 h-3.5 mr-1" /> Mark Picked Up
-                                </Button>
-                              )}
-
-                              {status === "PICKED_UP" && (
-                                <Button
-                                  size="xs"
-                                  variant="secondary"
-                                  onClick={() => handleStatusUpdate(order.id, "RETURNED", "Returned")}
-                                >
-                                  <RotateCcw className="w-3.5 h-3.5 mr-1" /> Mark Returned
-                                </Button>
-                              )}
-
-                              {(status === "RETURNED" || status === "CANCELLED") && (
-                                <span className="text-xs text-muted-foreground">-</span>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="h-8 px-2.5 text-xs"
+                >
+                  Next <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          </>
         )}
       </CardContent>
     </Card>

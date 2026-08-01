@@ -13,7 +13,7 @@ export const metadata = {
   description: "System overview and administrative controls.",
 };
 
-export default async function AdminDashboardPage() {
+export default async function DashboardAdminPage() {
   const [meRes, gearRes, catRes, rentalsRes, usersRes] = await Promise.all([
     getMe(),
     getAllGear(),

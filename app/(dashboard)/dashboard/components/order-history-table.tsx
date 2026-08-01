@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { IRental, RentalStatus } from "@/types/rental";
 import RentalStatusBadge from "@/components/shered/rental-status-badge";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,8 @@ import Image from "next/image";
 interface OrderHistoryTableProps {
   rentals: IRental[];
 }
+
+const ITEMS_PER_PAGE = 6;
 
 /**
  * Compute the effective rental status:
@@ -68,6 +71,7 @@ function getGearFromRental(rental: IRental) {
 
 export default function OrderHistoryTable({ rentals }: OrderHistoryTableProps) {
   const [localPaid, setLocalPaid] = useState<Record<string, boolean>>({});
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     const paidMap: Record<string, boolean> = {};
@@ -123,63 +127,72 @@ export default function OrderHistoryTable({ rentals }: OrderHistoryTableProps) {
     );
   }
 
+  const totalPages = Math.ceil(rentals.length / ITEMS_PER_PAGE) || 1;
+  const paginatedRentals = rentals.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Order History</CardTitle>
+        <CardTitle className="text-xl">My Rental Orders</CardTitle>
       </CardHeader>
       <CardContent>
         {/* Mobile View - Cards */}
         <div className="md:hidden space-y-4">
-          {rentals.map((rental) => {
+          {paginatedRentals.map((rental) => {
             const effectiveStatus = getEffectiveStatus(rental, localPaid);
             const gear = getGearFromRental(rental);
             const isPaidOrBeyond = ["PAID", "PICKED_UP", "RETURNED"].includes(effectiveStatus);
             const canPay = !isPaidOrBeyond && ["PLACED", "CONFIRMED"].includes(effectiveStatus);
 
             return (
-              <div key={rental.id} className="border rounded-lg p-4 space-y-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="relative h-12 w-12 rounded-md overflow-hidden bg-muted">
-                      <Image 
-                        src={getValidImageUrl(gear?.images?.[0])}
-                        alt={gear?.name || "Gear"}
-                        fill
-                        className="object-cover"
-                        sizes="48px"
-                      />
-                    </div>
-                    <div>
-                      <h4 className="font-medium line-clamp-1">{gear?.name || "Unknown Gear"}</h4>
-                      <p className="text-xs text-muted-foreground">
-                        {formatShortDate(rental.startDate)} - {formatDate(rental.endDate)}
-                      </p>
-                    </div>
+              <div key={rental.id} className="p-4 border rounded-lg space-y-3 bg-card">
+                <div className="flex items-center gap-3">
+                  <div className="relative h-12 w-12 rounded-md overflow-hidden bg-muted flex-shrink-0">
+                    <Image 
+                      src={getValidImageUrl(gear?.images?.[0])}
+                      alt={gear?.name || "Gear"}
+                      fill
+                      className="object-cover"
+                      sizes="48px"
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-sm truncate">{gear?.name || "Unknown Gear"}</h4>
+                    <p className="text-xs text-muted-foreground font-mono">#{rental.id.slice(-6)}</p>
                   </div>
                 </div>
-                <div className="flex items-center justify-between pt-2 border-t">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-xs text-muted-foreground">Status</span>
-                    <RentalStatusBadge status={effectiveStatus} />
+
+                <div className="grid grid-cols-2 gap-2 text-xs border-y py-2">
+                  <div>
+                    <span className="text-muted-foreground block">Period:</span>
+                    <span className="font-medium">
+                      {formatShortDate(rental.startDate)} - {formatShortDate(rental.endDate)}
+                    </span>
                   </div>
-                  <div className="flex flex-col items-end text-sm">
-                    <span className="text-xs text-muted-foreground">Total</span>
-                    <span className="font-semibold">${rental.totalAmount}</span>
+                  <div>
+                    <span className="text-muted-foreground block">Total Amount:</span>
+                    <span className="font-bold text-sm text-[#1b7a59]">${rental.totalAmount}</span>
                   </div>
                 </div>
-                <div className="pt-2 flex justify-end gap-2">
-                  {isPaidOrBeyond ? (
-                    <Button size="sm" disabled variant="secondary" className="opacity-60 cursor-not-allowed">
-                      Paid ✓
-                    </Button>
-                  ) : canPay ? (
-                    <Button nativeButton={false} size="sm" render={<Link href={`/dashboard/customer/orders/${rental.id}/pay`}>Pay Now</Link>} />
-                  ) : null}
-                  {effectiveStatus === "RETURNED" && (
-                    <Button nativeButton={false} size="sm" variant="outline" render={<Link href={`/dashboard/customer/orders/${rental.id}/review`}>Leave Review</Link>} />
-                  )}
-                  <Button nativeButton={false} size="sm" variant="secondary" render={<Link href={`/dashboard/customer/orders/${rental.id}`}>Details</Link>} />
+
+                <div className="flex items-center justify-between pt-1">
+                  <RentalStatusBadge status={effectiveStatus} />
+                  <div className="flex gap-2">
+                    {isPaidOrBeyond ? (
+                      <Button size="sm" disabled variant="secondary" className="opacity-60 cursor-not-allowed text-xs h-8">
+                        Paid ✓
+                      </Button>
+                    ) : canPay ? (
+                      <Button nativeButton={false} size="sm" render={<Link href={`/dashboard/customer/orders/${rental.id}/pay`}>Pay Now</Link>} />
+                    ) : null}
+                    {effectiveStatus === "RETURNED" && (
+                      <Button nativeButton={false} size="sm" variant="outline" render={<Link href={`/dashboard/customer/orders/${rental.id}/review`}>Leave Review</Link>} />
+                    )}
+                    <Button nativeButton={false} size="sm" variant="secondary" render={<Link href={`/dashboard/customer/orders/${rental.id}`}>Details</Link>} />
+                  </div>
                 </div>
               </div>
             );
@@ -199,7 +212,7 @@ export default function OrderHistoryTable({ rentals }: OrderHistoryTableProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rentals.map((rental) => {
+              {paginatedRentals.map((rental) => {
                 const effectiveStatus = getEffectiveStatus(rental, localPaid);
                 const gear = getGearFromRental(rental);
                 const isPaidOrBeyond = ["PAID", "PICKED_UP", "RETURNED"].includes(effectiveStatus);
@@ -253,6 +266,57 @@ export default function OrderHistoryTable({ rentals }: OrderHistoryTableProps) {
               })}
             </TableBody>
           </Table>
+        </div>
+
+        {/* Pagination Bar */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t text-sm">
+          <p className="text-xs text-muted-foreground">
+            Showing{" "}
+            <span className="font-semibold text-foreground">
+              {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, rentals.length)}
+            </span>{" "}
+            to{" "}
+            <span className="font-semibold text-foreground">
+              {Math.min(currentPage * ITEMS_PER_PAGE, rentals.length)}
+            </span>{" "}
+            of <span className="font-semibold text-foreground">{rentals.length}</span> orders
+          </p>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="h-8 px-2.5 text-xs"
+            >
+              <ChevronLeft className="w-4 h-4 mr-1" /> Previous
+            </Button>
+
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                <Button
+                  key={pageNum}
+                  variant={currentPage === pageNum ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCurrentPage(pageNum)}
+                  className="h-8 w-8 text-xs p-0"
+                >
+                  {pageNum}
+                </Button>
+              ))}
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="h-8 px-2.5 text-xs"
+            >
+              Next <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

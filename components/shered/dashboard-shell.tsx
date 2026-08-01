@@ -64,7 +64,7 @@ export default function DashboardShell({ user, children }: DashboardShellProps) 
       return [
         { label: "Dashboard", href: "/admin-dashboard", icon: LayoutDashboard },
         { label: "User Management", href: "/admin-dashboard/users", icon: Users },
-        { label: "Gear Inventory", href: "/gear", icon: Package },
+        { label: "Gear Inventory", href: "/admin-dashboard/gear", icon: Package },
         { label: "Rental Orders", href: "/admin-dashboard/orders", icon: ShoppingBag },
         { label: "Settings", href: "/profile", icon: Settings },
       ];

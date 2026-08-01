@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Edit2, Trash2, Plus, Search, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { Edit2, Trash2, Plus, Search, CheckCircle, XCircle, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { IGear } from "@/types/gear";
 import { deleteProviderGear, updateProviderGear } from "@/service/provider-gear";
@@ -26,17 +26,30 @@ interface InventoryTableProps {
   initialGear: IGear[];
 }
 
+const ITEMS_PER_PAGE = 6;
+
 export default function InventoryTable({ initialGear }: InventoryTableProps) {
   const [gearList, setGearList] = useState<IGear[]>(initialGear);
   const [searchQuery, setSearchQuery] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   const filteredGear = gearList.filter((item) =>
     item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (item.brand && item.brand.toLowerCase().includes(searchQuery.toLowerCase())) ||
     (item.category?.name && item.category.name.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const totalPages = Math.ceil(filteredGear.length / ITEMS_PER_PAGE) || 1;
+  const paginatedGear = filteredGear.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
   );
 
   const handleToggleAvailability = async (id: string, currentStatus: string) => {
@@ -103,7 +116,8 @@ export default function InventoryTable({ initialGear }: InventoryTableProps) {
             <Button nativeButton={false} size="sm" render={<Link href="/provider-dashboard/gear/new"><Plus className="w-4 h-4 mr-2" />Add Your First Gear</Link>} />
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -116,7 +130,7 @@ export default function InventoryTable({ initialGear }: InventoryTableProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredGear.map((gear) => (
+                {paginatedGear.map((gear) => (
                   <TableRow key={gear.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -185,8 +199,60 @@ export default function InventoryTable({ initialGear }: InventoryTableProps) {
               </TableBody>
             </Table>
           </div>
-        )}
-      </CardContent>
-    </Card>
-  );
+
+          {/* Pagination Bar */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t text-sm">
+            <p className="text-xs text-muted-foreground">
+              Showing{" "}
+              <span className="font-semibold text-foreground">
+                {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, filteredGear.length)}
+              </span>{" "}
+              to{" "}
+              <span className="font-semibold text-foreground">
+                {Math.min(currentPage * ITEMS_PER_PAGE, filteredGear.length)}
+              </span>{" "}
+              of <span className="font-semibold text-foreground">{filteredGear.length}</span> items
+            </p>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="h-8 px-2.5 text-xs"
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" /> Previous
+              </Button>
+
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                  <Button
+                    key={pageNum}
+                    variant={currentPage === pageNum ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentPage(pageNum)}
+                    className="h-8 w-8 text-xs p-0"
+                  >
+                    {pageNum}
+                  </Button>
+                ))}
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="h-8 px-2.5 text-xs"
+              >
+                Next <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
+    </CardContent>
+  </Card>
+);
 }
