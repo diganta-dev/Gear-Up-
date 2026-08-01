@@ -18,6 +18,14 @@ export default function GearFilters({ categories, closeDrawer }: GearFiltersProp
   const searchParams = useSearchParams();
   
   const [searchTerm, setSearchTerm] = useState(searchParams.get("searchTerm") || "");
+  const [minPrice, setMinPrice] = useState(searchParams.get("priceMin") || "");
+  const [maxPrice, setMaxPrice] = useState(searchParams.get("priceMax") || "");
+
+  useEffect(() => {
+    setSearchTerm(searchParams.get("searchTerm") || "");
+    setMinPrice(searchParams.get("priceMin") || "");
+    setMaxPrice(searchParams.get("priceMax") || "");
+  }, [searchParams]);
 
   const createQueryString = useCallback(
     (name: string, value: string) => {
@@ -85,16 +93,16 @@ export default function GearFilters({ categories, closeDrawer }: GearFiltersProp
         <Label>Category</Label>
         <div className="flex flex-col space-y-2 max-h-60 overflow-y-auto pr-2">
           <button
-            onClick={() => handleFilterChange("categoryId", "")}
-            className={`text-left text-sm px-2 py-1.5 rounded-md transition-colors ${!searchParams.get("categoryId") ? "bg-primary text-primary-foreground font-medium" : "hover:bg-muted"}`}
+            onClick={() => handleFilterChange("category", "")}
+            className={`text-left text-sm px-2 py-1.5 rounded-md transition-colors ${!searchParams.get("category") ? "bg-primary text-primary-foreground font-medium" : "hover:bg-muted"}`}
           >
             All Categories
           </button>
           {categories.map((category) => (
             <button
               key={category.id}
-              onClick={() => handleFilterChange("categoryId", category.id)}
-              className={`text-left text-sm px-2 py-1.5 rounded-md transition-colors ${searchParams.get("categoryId") === category.id ? "bg-primary text-primary-foreground font-medium" : "hover:bg-muted"}`}
+              onClick={() => handleFilterChange("category", category.id)}
+              className={`text-left text-sm px-2 py-1.5 rounded-md transition-colors ${searchParams.get("category") === category.id ? "bg-primary text-primary-foreground font-medium" : "hover:bg-muted"}`}
             >
               {category.name}
             </button>
@@ -109,18 +117,20 @@ export default function GearFilters({ categories, closeDrawer }: GearFiltersProp
             type="number" 
             placeholder="Min" 
             min="0"
-            defaultValue={searchParams.get("minPrice") || ""}
-            onBlur={(e) => handleFilterChange("minPrice", e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleFilterChange("minPrice", e.currentTarget.value)}
+            value={minPrice}
+            onChange={(e) => setMinPrice(e.target.value)}
+            onBlur={(e) => handleFilterChange("priceMin", e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleFilterChange("priceMin", e.currentTarget.value)}
           />
           <span className="text-muted-foreground">-</span>
           <Input 
             type="number" 
             placeholder="Max" 
             min="0"
-            defaultValue={searchParams.get("maxPrice") || ""}
-            onBlur={(e) => handleFilterChange("maxPrice", e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleFilterChange("maxPrice", e.currentTarget.value)}
+            value={maxPrice}
+            onChange={(e) => setMaxPrice(e.target.value)}
+            onBlur={(e) => handleFilterChange("priceMax", e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleFilterChange("priceMax", e.currentTarget.value)}
           />
         </div>
       </div>
