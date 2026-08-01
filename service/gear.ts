@@ -4,9 +4,9 @@ import { IGearResponse } from "@/types/gear";
 export const getFeaturedGear = async (): Promise<IGearResponse | null> => {
   try {
     const res = await fetch(`${API_BASE_URL}/api/gear`, {
-      // Use no-store or revalidate depending on freshness needs. 
-      // For a rental platform, inventory changes often, so no-store is safer.
-      cache: "no-store", 
+      next: {
+        revalidate: 60, // Re-fetch at most once every 60 seconds
+      },
     });
     
     if (!res.ok) {

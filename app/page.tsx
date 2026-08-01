@@ -1,18 +1,47 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { getFeaturedGear } from "@/service/gear";
 import GearCard from "@/components/shered/gear-card";
-import { Search, Shield, Zap, RefreshCw } from "lucide-react";
+import { Search, Shield, Zap, RefreshCw, Loader2 } from "lucide-react";
 
-export default async function Home() {
+// Async component that fetches gear data — wrapped in Suspense below
+async function FeaturedGearSection() {
   const gearResponse = await getFeaturedGear();
-  // Fetch up to 4 items for featured
-  const featuredGear = gearResponse?.success && Array.isArray(gearResponse.data) ? gearResponse.data.slice(0, 4) : []; 
+  const featuredGear = gearResponse?.success && Array.isArray(gearResponse.data) ? gearResponse.data.slice(0, 4) : [];
 
+  if (featuredGear.length === 0) {
+    return (
+      <div className="text-center py-20 bg-muted/20 rounded-lg border border-dashed">
+        <h3 className="text-lg font-medium text-muted-foreground">No featured gear available at the moment.</h3>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+      {featuredGear.map((gear) => (
+        <GearCard key={gear.id} gear={gear} />
+      ))}
+    </div>
+  );
+}
+
+// Loading skeleton shown while FeaturedGearSection streams in
+function FeaturedGearSkeleton() {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 gap-3">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <p className="text-sm text-muted-foreground">Loading featured gear...</p>
+    </div>
+  );
+}
+
+export default function Home() {
   return (
     <div className="flex min-h-screen flex-col">
       <main className="flex-1">
-        {/* Hero Section */}
+        {/* Hero Section — renders instantly, no data dependency */}
         <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48 bg-muted/40">
           <div className="container mx-auto px-4 md:px-6">
             <div className="flex flex-col items-center space-y-6 text-center">
@@ -40,7 +69,7 @@ export default async function Home() {
           </div>
         </section>
 
-        {/* Featured Gear Section */}
+        {/* Featured Gear — streams in via Suspense */}
         <section className="w-full py-16 md:py-24">
           <div className="container mx-auto px-4 md:px-6">
             <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-4">
@@ -52,22 +81,14 @@ export default async function Home() {
                 <Button variant="ghost">View All Gear</Button>
               </Link>
             </div>
-            
-            {featuredGear.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {featuredGear.map((gear) => (
-                  <GearCard key={gear.id} gear={gear} />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-20 bg-muted/20 rounded-lg border border-dashed">
-                <h3 className="text-lg font-medium text-muted-foreground">No featured gear available at the moment.</h3>
-              </div>
-            )}
+
+            <Suspense fallback={<FeaturedGearSkeleton />}>
+              <FeaturedGearSection />
+            </Suspense>
           </div>
         </section>
 
-        {/* How it Works Section */}
+        {/* How it Works Section — renders instantly */}
         <section className="w-full py-16 md:py-24 bg-muted/40">
           <div className="container mx-auto px-4 md:px-6">
             <h2 className="text-3xl font-bold tracking-tight text-center mb-12">How GearUp Works</h2>
@@ -129,3 +150,4 @@ export default async function Home() {
     </div>
   );
 }
+
