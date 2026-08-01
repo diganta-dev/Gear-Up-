@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/sonner";
 
 import { getMe } from "@/service/getme";
 import Navbar from "@/components/shered/navbar";
+import Footer from "@/components/shered/footer";
 import Providers from "@/components/providers";
 import { IUser } from "@/types/user";
 
@@ -32,7 +33,10 @@ const user = await getMe()
         <Providers>
           <Navbar user={user}></Navbar>
           <Toaster position="top-right" richColors />
-          {children}
+          <div className="flex-1">
+            {children}
+          </div>
+          <Footer />
         </Providers>
       </body>
     </html>

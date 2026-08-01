@@ -22,15 +22,7 @@ import { toast } from "sonner"
 
 const navItems = [
     { label: "Home", href: "/" },
-    { label: "Products", href: "/products" },
-    { label: "Pricing", href: "/pricing" },
-    { label: "About", href: "/about" },
-]
-
-const userMenuItems = [
-    { label: "Profile", href: "/profile", icon: User },
-    { label: "Billing", href: "/billing", icon: CreditCard },
-    { label: "Settings", href: "/settings", icon: Settings },
+    { label: "Browse Gear", href: "/gear" },
 ]
 
 interface NavbarProps {
@@ -108,8 +100,11 @@ export default function Navbar({ user }: NavbarProps) {
                         <DropdownMenuContent align="end">
                             <DropdownMenuGroup>
                                 {navItems.map((item) => (
-                                    <DropdownMenuItem key={item.href} render={<Link href={item.href}>{item.label}</Link>} />
+                                    <DropdownMenuItem key={item.href} render={<Link href={item.href} className="w-full cursor-pointer">{item.label}</Link>} />
                                 ))}
+                                {currentUser && (
+                                    <DropdownMenuItem render={<Link href={currentUser.role === 'ADMIN' ? '/admin-dashboard' : currentUser.role === 'PROVIDER' ? '/provider-dashboard' : '/dashboard'} className="w-full cursor-pointer">Dashboard</Link>} />
+                                )}
                             </DropdownMenuGroup>
                         </DropdownMenuContent>
                     </DropdownMenu>
@@ -148,14 +143,14 @@ export default function Navbar({ user }: NavbarProps) {
                                     </DropdownMenuLabel>
                                 </DropdownMenuGroup>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuGroup>
-                                    {userMenuItems.map((item) => (
-                                        <DropdownMenuItem key={item.href} render={<Link href={item.href} />}>
-                                            <item.icon className="mr-2 size-4" />
-                                            {item.label}
-                                        </DropdownMenuItem>
-                                    ))}
-                                </DropdownMenuGroup>
+                                    <DropdownMenuItem render={<Link href={currentUser.role === 'ADMIN' ? '/admin-dashboard' : currentUser.role === 'PROVIDER' ? '/provider-dashboard' : '/dashboard'} className="w-full cursor-pointer" />}>
+                                        <User className="mr-2 size-4" />
+                                        Dashboard
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem render={<Link href="/profile" className="w-full cursor-pointer" />}>
+                                        <Settings className="mr-2 size-4" />
+                                        Profile
+                                    </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuGroup>
                                     <DropdownMenuItem

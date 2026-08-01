@@ -20,11 +20,11 @@ export default function NotFound() {
           Page not found
         </h1>
         <p className="mt-6 text-lg text-muted-foreground sm:text-xl">
-          Sorry, we couldn't find the page you're looking for. It seems you've wandered off the map.
+          Sorry, we couldn&apos;t find the page you&apos;re looking for. It seems you&apos;ve wandered off the map.
         </p>
         
         <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Button render={<Link href="/" />} size="lg" className="w-full sm:w-auto h-12 px-8">
+          <Button render={<Link href="/" />} nativeButton={false} size="lg" className="w-full sm:w-auto h-12 px-8">
             <Home className="mr-2 h-5 w-5" />
             Return to Home
           </Button>
