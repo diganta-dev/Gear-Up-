@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { getCookie } from "cookies-next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,14 +60,8 @@ export default function GearDatePicker({ gear }: GearDatePickerProps) {
       return;
     }
 
-    const token = getCookie("accessToken");
-    if (!token) {
-      toast.error("Please login to continue with your rental");
-      router.push(`/login`);
-      return;
-    }
-
-    // Pass dates via query params to the checkout page (to be built in Part 6)
+    // Navigate to checkout — the checkout page handles auth server-side
+    // and will redirect to /login if not authenticated
     router.push(`/checkout/${gear.id}?startDate=${startDate}&endDate=${endDate}`);
   };
 
