@@ -2,7 +2,7 @@ export interface IUser {
   id: string;
   name: string;
   email: string;
-  role: "admin" | "provider" | "user";
+  role: "ADMIN" | "PROVIDER" | "CUSTOMER";
   profileImage?: string;
   createdAt: string;
   updatedAt: string;
@@ -20,7 +20,7 @@ export interface IAuthResponse {
 export interface IDecodedToken {
   id: string;
   email: string;
-  role: "admin" | "provider" | "user";
+  role: "ADMIN" | "PROVIDER" | "CUSTOMER";
   iat: number;
   exp: number;
 }

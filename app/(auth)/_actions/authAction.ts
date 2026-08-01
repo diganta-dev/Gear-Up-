@@ -33,7 +33,7 @@ export  const registerUser = async (prevState : LoginState,formData: FormData) =
         const decodedToken = jwt.decode(result.data.accessToken) as JwtPayload;
         return {
             ...result,
-            role: decodedToken?.role?.toLowerCase() || "user"
+            role: decodedToken?.role?.toLowerCase() || "customer"
         }
     }
     return result
