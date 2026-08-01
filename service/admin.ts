@@ -82,7 +82,7 @@ export const updateUserStatus = async (userId: string, isSuspended: boolean) => 
 };
 
 // Updates user role. Backend accepts: "CUSTOMER" | "PROVIDER" | "ADMIN"
-// Uses PATCH /api/users/{id} — same endpoint as status update
+// Uses dedicated endpoint: PATCH /api/admin/users/:id/role
 export const updateUserRole = async (userId: string, role: string) => {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get("accessToken")?.value;
@@ -92,7 +92,7 @@ export const updateUserRole = async (userId: string, role: string) => {
   }
 
   try {
-    const res = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
+    const res = await fetch(`${API_BASE_URL}/api/admin/users/${userId}/role`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -155,6 +155,21 @@ export const getAllRentalsAdmin = async () => {
   }
 
   try {
+    // 1. Try primary admin rentals endpoint: /api/admin/rentals
+    const adminRes = await fetch(`${API_BASE_URL}/api/admin/rentals`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: `accessToken=${accessToken}`,
+      },
+      next: { revalidate: 15, tags: ["admin-rentals"] },
+    });
+
+    if (adminRes.ok) {
+      return await adminRes.json();
+    }
+
+    // 2. Fallback try /api/rentals
     const res = await fetch(`${API_BASE_URL}/api/rentals`, {
       method: "GET",
       headers: {
@@ -168,7 +183,7 @@ export const getAllRentalsAdmin = async () => {
       return await res.json();
     }
 
-    // Fallback try provider orders
+    // 3. Fallback try /api/provider/orders
     const providerRes = await fetch(`${API_BASE_URL}/api/provider/orders`, {
       method: "GET",
       headers: {

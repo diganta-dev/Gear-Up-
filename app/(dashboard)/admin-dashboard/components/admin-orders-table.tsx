@@ -6,6 +6,7 @@ import { IRental, RentalStatus } from "@/types/rental";
 import RentalStatusBadge from "@/components/shered/rental-status-badge";
 import { updateRentalStatus } from "@/service/rentals";
 import { toast } from "sonner";
+import { getValidImageUrl } from "@/lib/utils";
 import {
   Search,
   ShoppingBag,
@@ -180,12 +181,15 @@ export default function AdminOrdersTable({ initialRentals }: AdminOrdersTablePro
                   <th className="py-3.5 px-4">Rental Period</th>
                   <th className="py-3.5 px-4">Status</th>
                   <th className="py-3.5 px-4">Total Amount</th>
+                  <th className="py-3.5 px-4 text-center">Details</th>
                   <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
                 {paginatedRentals.map((order) => {
-                  const gear = order.gearItem || order.items?.[0]?.gearItem;
+                  const gear = order.gearItem || order.items?.[0]?.gearItem || (order as any).gear;
+                  const rawImg = gear?.images?.[0] || (gear as any)?.image;
+                  const imageUrl = getValidImageUrl(rawImg);
 
                   return (
                     <tr key={order.id} className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 transition-colors">
@@ -193,8 +197,8 @@ export default function AdminOrdersTable({ initialRentals }: AdminOrdersTablePro
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3">
                           <div className="relative w-10 h-10 rounded-lg bg-zinc-100 dark:bg-zinc-800 overflow-hidden shrink-0 border border-zinc-200 dark:border-zinc-700">
-                            {gear?.images?.[0] ? (
-                              <Image src={gear.images[0]} alt={gear.name || "Gear"} fill className="object-cover" />
+                            {rawImg ? (
+                              <Image src={imageUrl} alt={gear?.name || "Gear"} fill unoptimized className="object-cover" />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-zinc-400">
                                 <Package className="w-4 h-4" />
@@ -241,32 +245,35 @@ export default function AdminOrdersTable({ initialRentals }: AdminOrdersTablePro
                         <p className="text-[10px] uppercase font-bold text-zinc-400">{order.paymentStatus || "UNPAID"}</p>
                       </td>
 
-                      {/* Actions */}
+                      {/* Details Column */}
+                      <td className="py-3.5 px-4 text-center">
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          onClick={() => setInspectedOrder(order)}
+                          className="h-8 px-2.5 text-xs font-semibold"
+                        >
+                          <Eye className="w-3.5 h-3.5 mr-1 text-zinc-500" />
+                          Details
+                        </Button>
+                      </td>
+
+                      {/* Actions Column */}
                       <td className="py-3.5 px-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
+                        {order.status !== "CANCELLED" && order.status !== "RETURNED" ? (
                           <Button
                             size="xs"
-                            variant="outline"
-                            onClick={() => setInspectedOrder(order)}
+                            variant="destructive"
+                            disabled={updatingId === order.id}
+                            onClick={() => setConfirmCancelOrder(order)}
                             className="h-8 px-2.5 text-xs font-semibold"
                           >
-                            <Eye className="w-3.5 h-3.5 mr-1 text-zinc-500" />
-                            Details
+                            <Ban className="w-3.5 h-3.5 mr-1" />
+                            Cancel
                           </Button>
-
-                          {order.status !== "CANCELLED" && order.status !== "RETURNED" && (
-                            <Button
-                              size="xs"
-                              variant="destructive"
-                              disabled={updatingId === order.id}
-                              onClick={() => setConfirmCancelOrder(order)}
-                              className="h-8 px-2 text-xs"
-                            >
-                              <Ban className="w-3.5 h-3.5 mr-1" />
-                              Cancel
-                            </Button>
-                          )}
-                        </div>
+                        ) : (
+                          <span className="text-[11px] text-zinc-400 font-medium font-mono">No Actions</span>
+                        )}
                       </td>
                     </tr>
                   );

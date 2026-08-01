@@ -6,6 +6,7 @@ import Link from "next/link";
 import { IGear } from "@/types/gear";
 import { deleteGearAdmin } from "@/service/admin";
 import { toast } from "sonner";
+import { getValidImageUrl } from "@/lib/utils";
 import {
   Search,
   Package,
@@ -170,9 +171,10 @@ export default function GearModerationTable({ initialGear }: GearModerationTable
                         <div className="relative w-12 h-12 rounded-lg bg-zinc-100 dark:bg-zinc-800 overflow-hidden shrink-0 border border-zinc-200 dark:border-zinc-700">
                           {item.images && item.images[0] ? (
                             <Image
-                              src={item.images[0]}
+                              src={getValidImageUrl(item.images[0])}
                               alt={item.name}
                               fill
+                              unoptimized
                               className="object-cover"
                             />
                           ) : (
@@ -312,7 +314,7 @@ export default function GearModerationTable({ initialGear }: GearModerationTable
               <div className="grid grid-cols-3 gap-2">
                 {inspectedGear.images.map((img, idx) => (
                   <div key={idx} className="relative h-24 rounded-lg bg-zinc-100 dark:bg-zinc-800 overflow-hidden border border-zinc-200 dark:border-zinc-800">
-                    <Image src={img} alt={`${inspectedGear.name} ${idx + 1}`} fill className="object-cover" />
+                    <Image src={getValidImageUrl(img)} alt={`${inspectedGear.name} ${idx + 1}`} fill unoptimized className="object-cover" />
                   </div>
                 ))}
               </div>
