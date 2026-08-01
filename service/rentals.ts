@@ -26,18 +26,6 @@ export const getMyRentals = async () => {
     });
 
     const result = await res.json();
-    // Debug: inspect what the backend returns for status & payment fields
-    if (result?.data?.length) {
-      result.data.slice(0, 3).forEach((r: any, i: number) => {
-        console.log(`RENTAL[${i}]:`, JSON.stringify({
-          id: r.id,
-          status: r.status,
-          paymentStatus: r.paymentStatus,
-          payment: r.payment,
-          allKeys: Object.keys(r),
-        }, null, 2));
-      });
-    }
     return result;
   } catch (_error) {
     return {

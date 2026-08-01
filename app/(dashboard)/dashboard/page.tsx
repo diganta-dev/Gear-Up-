@@ -10,14 +10,17 @@ export const metadata = {
 };
 
 export default async function DashboardPage() {
-  const meRes = await getMe();
+  const [meRes, rentalsRes] = await Promise.all([
+    getMe(),
+    getMyRentals()
+  ]);
+
   const user = meRes?.data?.user || meRes?.data;
   
   if (!user) {
     redirect("/login");
   }
 
-  const rentalsRes = await getMyRentals();
   const rentals = rentalsRes?.data || [];
 
   return (
