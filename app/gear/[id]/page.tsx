@@ -53,7 +53,7 @@ export default async function GearDetailsPage(props: PageProps) {
                 <Badge variant="secondary" className="px-3 py-1 text-xs">
                   {gear.category?.name || "Uncategorized"}
                 </Badge>
-                {gear.availability === "AVAILABLE" && gear.availableStock > 0 ? (
+                {gear.availableStock > 0 ? (
                   <Badge variant="default" className="px-3 py-1 bg-green-600 hover:bg-green-700 text-xs">
                     Available ({gear.availableStock} in stock)
                   </Badge>

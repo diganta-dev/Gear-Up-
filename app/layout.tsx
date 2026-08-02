@@ -31,7 +31,7 @@ const user = await getMe()
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <Providers>
           <Navbar user={user}></Navbar>
-          <Toaster position="top-right" richColors />
+          <Toaster position="top-right" theme="dark" />
           <div className="flex-1">
             {children}
           </div>

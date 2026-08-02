@@ -72,7 +72,7 @@ export default function GearDatePicker({ gear }: GearDatePickerProps) {
     router.push(`/checkout/${gear.id}?startDate=${startDate}&endDate=${endDate}`);
   };
 
-  const isUnavailable = gear.availability !== 'AVAILABLE' || gear.availableStock <= 0;
+  const isUnavailable = !gear.availableStock || gear.availableStock <= 0;
 
   return (
     <div className="rounded-xl border bg-card p-6 shadow-sm">

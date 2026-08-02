@@ -21,7 +21,7 @@ export default function GearCard({ gear }: GearCardProps) {
           className="object-cover transition-transform hover:scale-105"
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
         />
-        {gear.availability !== 'AVAILABLE' && (
+        {(!gear.availableStock || gear.availableStock <= 0) && (
           <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
             <Badge variant="destructive" className="text-sm font-semibold px-3 py-1">
               Currently Unavailable
