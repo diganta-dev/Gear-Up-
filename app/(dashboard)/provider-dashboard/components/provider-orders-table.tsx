@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   CheckCircle2,
   PackageCheck,
   RotateCcw,
-  XCircle,
   Search,
   Loader2,
   Calendar,
@@ -14,7 +14,9 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { toast } from "sonner";
 
+import type { IProviderOrder, RentalStatus } from "@/types/rental";
 import { updateProviderOrderStatus } from "@/service/rentals";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,326 +29,419 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import RentalStatusBadge from "@/components/shered/rental-status-badge";
-import { toast } from "sonner";
+import { EmptyState } from "@/components/shered/empty-state";
 
 interface ProviderOrdersTableProps {
-  initialRentals: any[];
+  initialOrders: IProviderOrder[];
 }
 
-const ITEMS_PER_PAGE = 6;
+interface PendingAction {
+  id: string;
+  newStatus: RentalStatus;
+  label: string;
+}
 
-export default function ProviderOrdersTable({ initialRentals }: ProviderOrdersTableProps) {
-  const [rentals, setRentals] = useState<any[]>(initialRentals);
+const STATUSES = ["ALL", "PLACED", "CONFIRMED", "PAID", "PICKED_UP", "RETURNED", "CANCELLED"] as const;
+const ITEMS_PER_PAGE = 8;
+
+const STATUS_LABELS: Record<RentalStatus, string> = {
+  PLACED: "Placed",
+  CONFIRMED: "Confirmed",
+  PAID: "Paid",
+  PICKED_UP: "Picked Up",
+  RETURNED: "Returned",
+  CANCELLED: "Cancelled",
+};
+
+function formatDate(dateStr: string) {
+  try {
+    return new Date(dateStr).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
+// Resolves customer/gear regardless of which field name the backend uses
+function resolveCustomer(order: IProviderOrder) {
+  const c = order.user ?? order.customer;
+  return { name: c?.name ?? "Customer", email: c?.email ?? "" };
+}
+
+function resolveGear(order: IProviderOrder) {
+  const g = order.gear ?? order.gearItem;
+  return { name: g?.name ?? "Equipment" };
+}
+
+export default function ProviderOrdersTable({ initialOrders }: ProviderOrdersTableProps) {
+  const router = useRouter();
+
+  const [orders, setOrders] = useState<IProviderOrder[]>(initialOrders);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
 
-  // Reset to page 1 when search or filter changes
+  // Sync state if initialOrders prop changes
+  useEffect(() => {
+    setOrders(initialOrders);
+  }, [initialOrders]);
+
+  // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, statusFilter]);
 
-  const handleStatusUpdate = async (id: string, newStatus: string, label: string) => {
-    setUpdatingId(id);
-    try {
-      const res = await updateProviderOrderStatus(id, newStatus);
-      if (res && res.success !== false) {
-        setRentals((prev) =>
-          prev.map((item) => (item.id === id ? { ...item, status: newStatus } : item))
-        );
-        toast.success(`Order marked as ${label}`);
-      } else {
-        toast.error(res?.message || "Failed to update order status.");
-      }
-    } catch {
-      toast.error("Failed to update status. Please try again.");
-    } finally {
-      setUpdatingId(null);
-    }
-  };
-
-  const filteredRentals = rentals.filter((order) => {
-    // Backend may use: order.user OR order.customer
-    const customerObj = order.user || order.customer || {};
-    const customerName = customerObj.name || order.customerName || "";
-    const customerEmail = customerObj.email || order.customerEmail || "";
-    // Backend may use: order.gear OR order.gearItem
-    const gearObj = order.gear || order.gearItem || {};
-    const gearName = gearObj.name || order.gearName || "";
-    const orderId = String(order.id || "");
+  const filteredOrders = orders.filter((order) => {
+    const customer = resolveCustomer(order);
+    const gear = resolveGear(order);
+    const query = searchQuery.toLowerCase();
 
     const matchesSearch =
       !searchQuery ||
-      customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      customerEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      gearName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      orderId.toLowerCase().includes(searchQuery.toLowerCase());
+      customer.name.toLowerCase().includes(query) ||
+      customer.email.toLowerCase().includes(query) ||
+      gear.name.toLowerCase().includes(query) ||
+      order.id.toLowerCase().includes(query);
 
     const matchesStatus =
-      statusFilter === "ALL" ||
-      (order.status || "").toUpperCase() === statusFilter;
+      statusFilter === "ALL" || order.status.toUpperCase() === statusFilter;
 
     return matchesSearch && matchesStatus;
   });
 
-  const totalPages = Math.ceil(filteredRentals.length / ITEMS_PER_PAGE) || 1;
-  const paginatedRentals = filteredRentals.slice(
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / ITEMS_PER_PAGE));
+  const paginatedOrders = filteredOrders.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
 
+  const executeStatusUpdate = async (action: PendingAction) => {
+    setUpdatingId(action.id);
+    setPendingAction(null);
+
+    const result = await updateProviderOrderStatus(action.id, action.newStatus);
+
+    if (result.success === true) {
+      // Optimistically reflect the change in the local list
+      setOrders((prev) =>
+        prev.map((o) => (o.id === action.id ? { ...o, status: action.newStatus } : o))
+      );
+      toast.success(`Order marked as ${action.label}.`);
+      // Sync the server component so the next hard reload is consistent
+      router.refresh();
+    } else {
+      toast.error(result.message ?? "Failed to update order status.");
+    }
+
+    setUpdatingId(null);
+  };
+
+  const requestAction = (id: string, newStatus: RentalStatus, label: string) => {
+    // Confirm before destructive or important status changes
+    setPendingAction({ id, newStatus, label });
+  };
+
   return (
-    <Card className="shadow-md">
-      <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <CardTitle className="text-xl font-bold flex items-center gap-2">
-            <ShoppingBag className="w-5 h-5 text-primary" />
-            Rental Orders Management
-          </CardTitle>
-          <CardDescription className="text-xs text-muted-foreground mt-1">
-            Review incoming rental requests and update order statuses.
-          </CardDescription>
-        </div>
+    <>
+      {/* Confirmation dialog for status changes */}
+      <AlertDialog
+        open={!!pendingAction}
+        onOpenChange={(open: boolean) => { if (!open) setPendingAction(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Action</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingAction?.newStatus === "CANCELLED"
+                ? "Are you sure you want to cancel this order? This action cannot be undone."
+                : `Mark this order as "${pendingAction?.label}"? This will update the order status for the customer.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Go Back</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => pendingAction && executeStatusUpdate(pendingAction)}
+              className={
+                pendingAction?.newStatus === "CANCELLED"
+                  ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  : ""
+              }
+            >
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-          {/* Search bar */}
-          <div className="relative flex-1 sm:w-60">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search customer or gear..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 text-sm"
+      <Card className="shadow-sm">
+        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <CardTitle className="text-lg font-bold flex items-center gap-2">
+              <ShoppingBag className="w-5 h-5 text-primary" />
+              Rental Orders
+            </CardTitle>
+            <CardDescription className="text-xs text-muted-foreground mt-0.5">
+              {orders.length} total order{orders.length !== 1 ? "s" : ""} for your gear
+            </CardDescription>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+            <div className="relative flex-1 sm:w-56">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <Input
+                placeholder="Search customer or gear..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 text-sm h-9"
+              />
+            </div>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring dark:bg-input/30 shrink-0"
+            >
+              {STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {s === "ALL" ? "All Statuses" : s.replace("_", " ")}
+                </option>
+              ))}
+            </select>
+          </div>
+        </CardHeader>
+
+        <CardContent>
+          {filteredOrders.length === 0 ? (
+            <EmptyState
+              icon={ShoppingBag}
+              title="No orders found"
+              description={
+                searchQuery || statusFilter !== "ALL"
+                  ? "Try adjusting your search or filter."
+                  : "When customers rent your gear, their orders will appear here."
+              }
+              className="min-h-[280px]"
             />
-          </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[90px]">Order</TableHead>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Gear</TableHead>
+                      <TableHead>Rental Period</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedOrders.map((order) => {
+                      const status = order.status.toUpperCase() as RentalStatus;
+                      const customer = resolveCustomer(order);
+                      const gear = resolveGear(order);
+                      const isUpdating = updatingId === order.id;
 
-          {/* Status filter dropdown */}
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring dark:bg-input/30 shrink-0"
-          >
-            <option value="ALL">All Statuses</option>
-            <option value="PLACED">Placed (Pending)</option>
-            <option value="CONFIRMED">Confirmed</option>
-            <option value="PAID">Paid</option>
-            <option value="PICKED_UP">Picked Up</option>
-            <option value="RETURNED">Returned</option>
-            <option value="CANCELLED">Cancelled</option>
-          </select>
-        </div>
-      </CardHeader>
+                      return (
+                        <TableRow key={order.id}>
+                          <TableCell className="font-mono text-xs text-muted-foreground">
+                            #{order.id.slice(-6).toUpperCase()}
+                          </TableCell>
 
-      <CardContent>
-        {filteredRentals.length === 0 ? (
-          <div className="text-center py-12 border rounded-lg bg-muted/20">
-            <ShoppingBag className="w-10 h-10 mx-auto text-muted-foreground mb-3 opacity-50" />
-            <p className="text-muted-foreground text-sm font-medium">No rental orders found.</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {searchQuery || statusFilter !== "ALL"
-                ? "Try adjusting your search or status filter."
-                : "When customers rent your gear, incoming orders will appear here."}
-            </p>
-          </div>
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Order Info</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Gear Item</TableHead>
-                    <TableHead>Rental Period</TableHead>
-                    <TableHead>Total Amount</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedRentals.map((order) => {
-                    const status = (order.status || "PLACED").toUpperCase();
-                    // Support both field naming conventions from backend
-                    const customerObj = order.user || order.customer || {};
-                    const customer = {
-                      name: customerObj.name || order.customerName || "Customer",
-                      email: customerObj.email || order.customerEmail || "",
-                    };
-                    const gearObj = order.gear || order.gearItem || {};
-                    const gear = {
-                      name: gearObj.name || order.gearName || "Equipment",
-                    };
-
-                    let startDateStr = "";
-                    let endDateStr = "";
-                    try {
-                      if (order.startDate) startDateStr = new Date(order.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-                      if (order.endDate) endDateStr = new Date(order.endDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-                    } catch {
-                      startDateStr = order.startDate || "";
-                      endDateStr = order.endDate || "";
-                    }
-
-                    return (
-                      <TableRow key={order.id}>
-                        <TableCell className="font-mono text-xs text-muted-foreground">
-                          #{String(order.id).slice(-6)}
-                        </TableCell>
-
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <User className="w-4 h-4 text-muted-foreground shrink-0" />
-                            <div>
-                              <p className="font-semibold text-sm line-clamp-1">{customer.name}</p>
-                              {customer.email && (
-                                <p className="text-xs text-muted-foreground">{customer.email}</p>
-                              )}
+                          <TableCell>
+                            <div className="flex items-center gap-2 min-w-0">
+                              <User className="w-4 h-4 text-muted-foreground shrink-0" />
+                              <div className="min-w-0">
+                                <p className="font-medium text-sm truncate">{customer.name}</p>
+                                {customer.email && (
+                                  <p className="text-xs text-muted-foreground truncate">
+                                    {customer.email}
+                                  </p>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        </TableCell>
+                          </TableCell>
 
-                        <TableCell className="font-medium text-sm">
-                          {gear.name}
-                        </TableCell>
+                          <TableCell className="font-medium text-sm max-w-[160px] truncate">
+                            {gear.name}
+                          </TableCell>
 
-                        <TableCell className="text-xs">
-                          <div className="flex items-center gap-1.5 text-muted-foreground">
-                            <Calendar className="w-3.5 h-3.5 shrink-0" />
-                            <span>
-                              {startDateStr} - {endDateStr}
-                            </span>
-                          </div>
-                        </TableCell>
+                          <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                            <div className="flex items-center gap-1.5">
+                              <Calendar className="w-3.5 h-3.5 shrink-0" />
+                              <span>
+                                {formatDate(order.startDate)} — {formatDate(order.endDate)}
+                              </span>
+                            </div>
+                          </TableCell>
 
-                        <TableCell className="font-bold text-sm">
-                          ${order.totalAmount ?? order.totalPrice ?? 0}
-                        </TableCell>
+                          <TableCell className="font-semibold text-sm">
+                            ${(order.totalAmount ?? 0).toLocaleString()}
+                          </TableCell>
 
-                        <TableCell>
-                          <RentalStatusBadge status={status} />
-                        </TableCell>
+                          <TableCell>
+                            <RentalStatusBadge status={status} />
+                          </TableCell>
 
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            {updatingId === order.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                            ) : (
-                              <>
-                                {status === "PLACED" && (
-                                  <>
+                          <TableCell className="text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-2">
+                              {isUpdating ? (
+                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                                  <span>Updating...</span>
+                                </div>
+                              ) : (
+                                <>
+                                  {/* PLACED → Confirm */}
+                                  {status === "PLACED" && (
                                     <Button
                                       size="xs"
                                       variant="default"
-                                      onClick={() => handleStatusUpdate(order.id, "CONFIRMED", "Confirmed")}
+                                      onClick={() =>
+                                        requestAction(order.id, "CONFIRMED", "Confirmed")
+                                      }
                                     >
-                                      <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Confirm
+                                      <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                                      Confirm
                                     </Button>
+                                  )}
+
+                                  {/* PAID → Mark Picked Up */}
+                                  {status === "PAID" && (
                                     <Button
                                       size="xs"
-                                      variant="outline"
-                                      className="text-destructive border-destructive/30 hover:bg-destructive/10"
-                                      onClick={() => handleStatusUpdate(order.id, "CANCELLED", "Cancelled")}
+                                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                      onClick={() =>
+                                        requestAction(order.id, "PICKED_UP", "Picked Up")
+                                      }
                                     >
-                                      <XCircle className="w-3.5 h-3.5 mr-1" /> Cancel
+                                      <PackageCheck className="w-3.5 h-3.5 mr-1" />
+                                      Mark Picked Up
                                     </Button>
-                                  </>
-                                )}
+                                  )}
 
-                                {status === "CONFIRMED" && (
-                                  <span className="text-xs text-muted-foreground italic">
-                                    Awaiting payment
-                                  </span>
-                                )}
+                                  {/* PICKED_UP → Mark Returned */}
+                                  {status === "PICKED_UP" && (
+                                    <Button
+                                      size="xs"
+                                      variant="secondary"
+                                      onClick={() =>
+                                        requestAction(order.id, "RETURNED", "Returned")
+                                      }
+                                    >
+                                      <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                                      Mark Returned
+                                    </Button>
+                                  )}
 
-                                {status === "PAID" && (
-                                  <Button
-                                    size="xs"
-                                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                                    onClick={() => handleStatusUpdate(order.id, "PICKED_UP", "Picked Up")}
+                                  {/* Direct Status Selector Dropdown */}
+                                  <select
+                                    value={pendingAction?.id === order.id ? pendingAction.newStatus : status}
+                                    onChange={(e) => {
+                                      const nextStatus = e.target.value as RentalStatus;
+                                      if (nextStatus !== status) {
+                                        const label = STATUS_LABELS[nextStatus] || nextStatus;
+                                        requestAction(order.id, nextStatus, label);
+                                      }
+                                    }}
+                                    disabled={isUpdating}
+                                    className="h-8 rounded-md border border-input bg-background px-2 py-1 text-xs font-medium shadow-sm focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer hover:bg-accent/50 transition-colors shrink-0"
+                                    title="Change Order Status"
                                   >
-                                    <PackageCheck className="w-3.5 h-3.5 mr-1" /> Mark Picked Up
-                                  </Button>
-                                )}
-
-                                {status === "PICKED_UP" && (
-                                  <Button
-                                    size="xs"
-                                    variant="secondary"
-                                    onClick={() => handleStatusUpdate(order.id, "RETURNED", "Returned")}
-                                  >
-                                    <RotateCcw className="w-3.5 h-3.5 mr-1" /> Mark Returned
-                                  </Button>
-                                )}
-
-                                {(status === "RETURNED" || status === "CANCELLED") && (
-                                  <span className="text-xs text-muted-foreground">-</span>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-
-            {/* Pagination Bar */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t text-sm">
-              <p className="text-xs text-muted-foreground">
-                Showing{" "}
-                <span className="font-semibold text-foreground">
-                  {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, filteredRentals.length)}
-                </span>{" "}
-                to{" "}
-                <span className="font-semibold text-foreground">
-                  {Math.min(currentPage * ITEMS_PER_PAGE, filteredRentals.length)}
-                </span>{" "}
-                of <span className="font-semibold text-foreground">{filteredRentals.length}</span> orders
-              </p>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="h-8 px-2.5 text-xs"
-                >
-                  <ChevronLeft className="w-4 h-4 mr-1" /> Previous
-                </Button>
-
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-                    <Button
-                      key={pageNum}
-                      variant={currentPage === pageNum ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setCurrentPage(pageNum)}
-                      className="h-8 w-8 text-xs p-0"
-                    >
-                      {pageNum}
-                    </Button>
-                  ))}
-                </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="h-8 px-2.5 text-xs"
-                >
-                  Next <ChevronRight className="w-4 h-4 ml-1" />
-                </Button>
+                                    <option value="PLACED">Placed</option>
+                                    <option value="CONFIRMED">Confirmed</option>
+                                    <option value="PAID">Paid</option>
+                                    <option value="PICKED_UP">Picked Up</option>
+                                    <option value="RETURNED">Returned</option>
+                                    <option value="CANCELLED">Cancelled</option>
+                                  </select>
+                                </>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               </div>
-            </div>
-          </>
-        )}
-      </CardContent>
-    </Card>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-5 pt-4 border-t text-sm">
+                  <p className="text-xs text-muted-foreground">
+                    Showing{" "}
+                    <span className="font-semibold text-foreground">
+                      {(currentPage - 1) * ITEMS_PER_PAGE + 1}
+                    </span>{" "}
+                    to{" "}
+                    <span className="font-semibold text-foreground">
+                      {Math.min(currentPage * ITEMS_PER_PAGE, filteredOrders.length)}
+                    </span>{" "}
+                    of{" "}
+                    <span className="font-semibold text-foreground">{filteredOrders.length}</span>{" "}
+                    orders
+                  </p>
+
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="h-8 px-2.5 text-xs"
+                    >
+                      <ChevronLeft className="w-4 h-4 mr-1" />
+                      Previous
+                    </Button>
+
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <Button
+                        key={page}
+                        variant={currentPage === page ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCurrentPage(page)}
+                        className="h-8 w-8 p-0 text-xs"
+                      >
+                        {page}
+                      </Button>
+                    ))}
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="h-8 px-2.5 text-xs"
+                    >
+                      Next
+                      <ChevronRight className="w-4 h-4 ml-1" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </>
   );
 }

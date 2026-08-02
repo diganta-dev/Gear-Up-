@@ -25,12 +25,11 @@ export default async function ProviderDashboardPage() {
   }
 
   const gearItems = gearRes?.data || [];
-  const providerOrders = Array.isArray(providerOrdersRes?.data)
-    ? providerOrdersRes.data
-    : [];
+  // getProviderRentals now returns IProviderOrder[] directly
+  const providerOrders = providerOrdersRes;
 
   const pendingOrders = providerOrders.filter(
-    (o: any) => (o.status || "").toUpperCase() === "PLACED"
+    (o) => o.status.toUpperCase() === "PLACED"
   ).length;
 
   return (
