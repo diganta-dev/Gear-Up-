@@ -1,9 +1,9 @@
 import { API_BASE_URL } from "@/lib/api-client";
 import { IGearResponse, ICategoryResponse, ISingleGearResponse } from "@/types/gear";
 
-export const getFeaturedGear = async (): Promise<IGearResponse | null> => {
+export const getFeaturedGear = async (limit: number = 8): Promise<IGearResponse | null> => {
   try {
-    const res = await fetch(`${API_BASE_URL}/api/gear`, {
+    const res = await fetch(`${API_BASE_URL}/api/gear?limit=${limit}`, {
       next: {
         revalidate: 60, // Re-fetch at most once every 60 seconds
       },
