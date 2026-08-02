@@ -11,13 +11,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { registerAction } from "@/app/(auth)/_actions/authAction";
 
 const registerSchema = z
@@ -64,14 +58,19 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-lg">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Register</CardTitle>
-          <CardDescription>Create a new account to get started</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <div className="flex min-h-screen items-center justify-center">
+      <div className="w-full max-w-md space-y-6 rounded-lg border p-8 shadow-lg">
+        {/* Form Header */}
+        <div className="space-y-2 text-center">
+          <h1 className="text-2xl font-bold">Register</h1>
+          <p className="text-sm text-gray-600">
+            Create a new account to get started
+          </p>
+        </div>
+
+        {/* form fields */}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <Card className="space-y-4 p-6">
             <div className="space-y-2">
               <Label htmlFor="name">Name</Label>
               <Input
@@ -146,19 +145,19 @@ export default function RegisterPage() {
               )}
             </div>
 
-            <Button type="submit" className="w-full mt-6" disabled={isSubmitting}>
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? "Creating account..." : "Create Account"}
             </Button>
 
-            <p className="text-center text-sm text-muted-foreground pt-4">
+            <p className="text-center text-sm text-muted-foreground pt-2">
               Already have an account?{" "}
               <Link href="/login" className="text-primary hover:underline">
                 Sign in
               </Link>
             </p>
-          </form>
-        </CardContent>
-      </Card>
+          </Card>
+        </form>
+      </div>
     </div>
   );
 }
