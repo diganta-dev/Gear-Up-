@@ -23,6 +23,8 @@ import { toast } from "sonner"
 const navItems = [
     { label: "Home", href: "/" },
     { label: "Browse Gear", href: "/gear" },
+    { label: "About", href: "/about" },
+    { label: "Contact", href: "/contact" },
 ]
 
 interface NavbarProps {
