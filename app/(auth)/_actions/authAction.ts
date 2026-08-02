@@ -4,17 +4,17 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import jwt, { JwtPayload } from "jsonwebtoken"
 
-type LoginState ={
-    success:true,
-    statusCode:number,
-    message:string,
-    data:{
+type LoginState = {
+    success: true,
+    statusCode: number,
+    message: string,
+    data: {
         accessToken: string,
         refreshToken: string
     }
 }
 
-export  const loginAction = async (prevState : LoginState,formData: FormData) => {
+export const loginAction = async (prevState: LoginState, formData: FormData) => {
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
     const res = await fetch(`${process.env.BACKEND_API_URL}/api/auth/login`, {
@@ -26,22 +26,22 @@ export  const loginAction = async (prevState : LoginState,formData: FormData) =>
     });
     const result = await res.json();
     console.log("=== LOGIN API RESPONSE ===", JSON.stringify(result, null, 2));
-    if(result.success){
+    if (result.success) {
         const cookieStore = await cookies()
         const isProduction = process.env.NODE_ENV === "production";
-        cookieStore.set("accessToken",result.data.accessToken,{httpOnly:true,secure:isProduction,maxAge:60*60*24,sameSite:'lax'})
-        cookieStore.set("refreshToken",result.data.refreshToken,{httpOnly:true,secure:isProduction,maxAge:60*60*24*7,sameSite:'lax'})
+        cookieStore.set("accessToken", result.data.accessToken, { httpOnly: true, secure: isProduction, maxAge: 60 * 60 * 24, sameSite: 'lax' })
+        cookieStore.set("refreshToken", result.data.refreshToken, { httpOnly: true, secure: isProduction, maxAge: 60 * 60 * 24 * 7, sameSite: 'lax' })
         const decodedToken = jwt.decode(result.data.accessToken) as JwtPayload;
         const userRole = (decodedToken?.role || result.data?.user?.role || result.data?.role || "").toUpperCase();
 
         if (userRole === "ADMIN") {
-          redirect("/admin-dashboard");
+            redirect("/admin-dashboard");
         } else if (userRole === "PROVIDER") {
-          redirect("/dashboard/provider");
+            redirect("/dashboard/provider");
         } else if (userRole === "CUSTOMER") {
-          redirect("/dashboard");
+            redirect("/dashboard");
         } else {
-          redirect("/dashboard");
+            redirect("/dashboard");
         }
     }
     return result;
@@ -56,7 +56,7 @@ export const registerAction = async (data: { name: string; email: string; passwo
         body: JSON.stringify(data),
     });
     const result = await res.json();
-    
+
     if (result.success) {
         const cookieStore = await cookies();
         const isProduction = process.env.NODE_ENV === "production";
@@ -66,13 +66,13 @@ export const registerAction = async (data: { name: string; email: string; passwo
         const userRole = (decodedToken?.role || result.data?.user?.role || result.data?.role || data.role || "").toUpperCase();
 
         if (userRole === "ADMIN") {
-          redirect("/admin-dashboard");
+            redirect("/admin-dashboard");
         } else if (userRole === "PROVIDER") {
-          redirect("/dashboard/provider");
+            redirect("/dashboard/provider");
         } else if (userRole === "CUSTOMER") {
-          redirect("/dashboard");
+            redirect("/dashboard");
         } else {
-          redirect("/dashboard");
+            redirect("/dashboard");
         }
     }
 

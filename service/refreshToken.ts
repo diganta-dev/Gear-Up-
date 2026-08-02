@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 export const getNewAccessToken = async () => {
     const cookieStore = await cookies();
 
-    const refreshToken =  cookieStore.get("refreshToken")?.value || null;
+    const refreshToken = cookieStore.get("refreshToken")?.value || null;
 
     if (!refreshToken) {
         // throw new Error("User Not Logged In!");
@@ -16,7 +16,7 @@ export const getNewAccessToken = async () => {
         }
     }
 
-    
+
 
     const res = await fetch(`${process.env.BACKEND_API_URL}/api/v1/auth/refresh-token`, {
         method: "POST",
@@ -26,12 +26,12 @@ export const getNewAccessToken = async () => {
         },
 
         cache: "no-cache",
-    
+
     });
 
-    
+
     const result = await res.json();
-    
+
 
 
 
