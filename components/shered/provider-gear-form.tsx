@@ -65,7 +65,7 @@ export default function ProviderGearForm({ initialData, categories, isEdit = fal
     }
 
     const priceNum = Number(dailyRentalPrice);
-    const stockNum = Number(stock) || 1;
+    const stockNum = stock === "" || isNaN(Number(stock)) ? 0 : Math.max(0, Number(stock));
 
     // Parse image URLs (comma or newline separated)
     const imagesArray = imageUrl
@@ -239,7 +239,7 @@ export default function ProviderGearForm({ initialData, categories, isEdit = fal
               <Input
                 id="gear-stock"
                 type="number"
-                min="1"
+                min="0"
                 placeholder="e.g. 3"
                 value={stock}
                 onChange={(e) => setStock(e.target.value)}
@@ -262,6 +262,7 @@ export default function ProviderGearForm({ initialData, categories, isEdit = fal
               >
                 <option value="AVAILABLE" className="dark:bg-background">AVAILABLE</option>
                 <option value="OUT_OF_STOCK" className="dark:bg-background">OUT OF STOCK</option>
+                <option value="UNAVAILABLE" className="dark:bg-background">UNAVAILABLE (Archived/Rented)</option>
                 <option value="MAINTENANCE" className="dark:bg-background">MAINTENANCE</option>
               </select>
             </div>

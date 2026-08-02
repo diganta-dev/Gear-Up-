@@ -74,13 +74,15 @@ export const createProviderGear = async (payload: CreateGearPayload) => {
       headers: {
         "Content-Type": "application/json",
         Cookie: `accessToken=${accessToken}`,
+        Authorization: accessToken,
+        authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify(payload),
       cache: "no-store",
     });
 
     if (res.ok) {
-      try { revalidatePath("/provider-dashboard"); } catch {}
+      try { revalidatePath("/provider-dashboard"); } catch { }
     }
     const text = await res.text();
     try {
@@ -117,13 +119,15 @@ export const updateProviderGear = async (id: string, payload: Partial<CreateGear
       headers: {
         "Content-Type": "application/json",
         Cookie: `accessToken=${accessToken}`,
+        Authorization: accessToken,
+        authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify(payload),
       cache: "no-store",
     });
 
     if (res.ok) {
-      try { revalidatePath("/provider-dashboard"); } catch {}
+      try { revalidatePath("/provider-dashboard"); } catch { }
     }
     const text = await res.text();
     try {
@@ -160,22 +164,77 @@ export const deleteProviderGear = async (id: string) => {
       headers: {
         "Content-Type": "application/json",
         Cookie: `accessToken=${accessToken}`,
+        Authorization: accessToken,
+        authorization: `Bearer ${accessToken}`,
       },
       cache: "no-store",
     });
 
+    const text = await res.text();
+    let data: any = {};
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { message: text };
+    }
+
+    console.log(`[deleteProviderGear] DELETE /api/gear/${id} → status=${res.status} body=${text.slice(0, 300)}`);
+
+    const messageString = `${data?.message || ""} ${text || ""}`;
+    const isConstraintOrError =
+      !res.ok ||
+      messageString.toLowerCase().includes("prisma") ||
+      messageString.toLowerCase().includes("foreign key") ||
+      messageString.toLowerCase().includes("rental_order_items") ||
+      messageString.toLowerCase().includes("constraint") ||
+      messageString.toLowerCase().includes("invocation") ||
+      data?.success === false;
+
+    if (isConstraintOrError) {
+      // Try OUT_OF_STOCK first (providers usually have permission), then UNAVAILABLE (admin-level)
+      const archivePayloads = [
+        { availability: "OUT_OF_STOCK", stock: 0, availableStock: 0 },
+        { availability: "UNAVAILABLE",  stock: 0, availableStock: 0 },
+      ];
+
+      for (const payload of archivePayloads) {
+        const archiveRes = await fetch(`${API_BASE_URL}/api/gear/${id}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Cookie: `accessToken=${accessToken}`,
+            Authorization: accessToken,
+            authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify(payload),
+          cache: "no-store",
+        });
+
+        const archiveText = await archiveRes.text();
+        console.log(`[deleteProviderGear archive] PATCH payload=${JSON.stringify(payload)} → status=${archiveRes.status} body=${archiveText.slice(0, 200)}`);
+
+        if (archiveRes.ok) {
+          try { revalidatePath("/provider-dashboard"); } catch {}
+          try { revalidatePath("/provider-dashboard/inventory"); } catch {}
+          try { revalidatePath("/gear"); } catch {}
+          return {
+            success: true,
+            isArchived: true,
+            archivedAs: payload.availability,
+            message: `Item has rental history; marked as ${payload.availability} and archived.`,
+          };
+        }
+      }
+    }
+
     if (res.ok) {
       try { revalidatePath("/provider-dashboard"); } catch {}
     }
-    const text = await res.text();
-    try {
-      return JSON.parse(text);
-    } catch {
-      return {
-        success: res.ok,
-        message: text || "Gear deleted successfully.",
-      };
-    }
+
+    return {
+      success: res.ok,
+      message: data?.message || (res.ok ? "Gear deleted successfully." : "Failed to delete gear."),
+    };
   } catch (error) {
     console.error("DELETE GEAR ERROR:", error);
     return {

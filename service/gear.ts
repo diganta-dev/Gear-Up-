@@ -74,9 +74,7 @@ export const getCategories = async (): Promise<ICategoryResponse | null> => {
 export const getGearById = async (id: string): Promise<ISingleGearResponse | null> => {
   try {
     const res = await fetch(`${API_BASE_URL}/api/gear/${id}`, {
-      next: {
-        revalidate: 60, // Cache for 60 seconds
-      },
+      cache: "no-store",
     });
     
     if (!res.ok) {

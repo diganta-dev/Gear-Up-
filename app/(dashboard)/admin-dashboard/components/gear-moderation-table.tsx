@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { IGear } from "@/types/gear";
-import { deleteGearAdmin } from "@/service/admin";
+import { deleteGearAdmin, updateGearAvailabilityAdmin } from "@/service/admin";
 import { toast } from "sonner";
 import { getValidImageUrl } from "@/lib/utils";
 import {
@@ -23,6 +23,9 @@ import {
   X,
   ExternalLink,
   Pencil,
+  CheckCircle,
+  XCircle,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,8 +42,49 @@ export default function GearModerationTable({ initialGear }: GearModerationTable
   const [selectedCategory, setSelectedCategory] = useState("ALL");
   const [currentPage, setCurrentPage] = useState(1);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
   const [confirmDeleteGear, setConfirmDeleteGear] = useState<IGear | null>(null);
   const [inspectedGear, setInspectedGear] = useState<IGear | null>(null);
+  const [rentedAlertItem, setRentedAlertItem] = useState<IGear | null>(null);
+
+  // Update gear availability status (Admin)
+  const handleUpdateAvailability = async (id: string, newStatus: string) => {
+    setTogglingId(id);
+    try {
+      const res = await updateGearAvailabilityAdmin(id, newStatus);
+      if (res?.success !== false) {
+        setGearList((prev) =>
+          prev.map((g) => (g.id === id ? { ...g, availability: newStatus } : g))
+        );
+        toast.success(`Status updated to ${newStatus.replace(/_/g, " ")}`);
+      } else {
+        // Fallback: try via client-side API route
+        try {
+          const apiRes = await fetch("/api/admin/archive-gear", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ gearId: id, availability: newStatus }),
+            credentials: "include",
+          });
+          const apiData = await apiRes.json();
+          if (apiRes.ok && apiData.success) {
+            setGearList((prev) =>
+              prev.map((g) => (g.id === id ? { ...g, availability: newStatus } : g))
+            );
+            toast.success(`Status updated to ${newStatus.replace(/_/g, " ")}.`);
+          } else {
+            toast.error(res?.message || "Failed to update status.");
+          }
+        } catch {
+          toast.error(res?.message || "Failed to update status.");
+        }
+      }
+    } catch {
+      toast.error("Failed to update status.");
+    } finally {
+      setTogglingId(null);
+    }
+  };
 
   // Extract unique categories for filter
   const categories = Array.from(
@@ -78,10 +122,48 @@ export default function GearModerationTable({ initialGear }: GearModerationTable
     setDeletingId(null);
 
     if (res?.success !== false) {
-      setGearList((prev) => prev.filter((g) => g.id !== targetGear.id));
-      toast.success(`Listing "${targetGear.name}" removed successfully.`);
+      if (res?.isArchived) {
+        setGearList((prev) =>
+          prev.map((g) =>
+            g.id === targetGear.id ? { ...g, availability: "UNAVAILABLE", stock: 0, availableStock: 0 } : g
+          )
+        );
+        setRentedAlertItem(targetGear);
+        toast.warning(`Item "${targetGear.name}" has customer rental history; marked as UNAVAILABLE & archived.`, { duration: 6000 });
+      } else {
+        setGearList((prev) => prev.filter((g) => g.id !== targetGear.id));
+        toast.success(`Listing "${targetGear.name}" removed successfully.`);
+      }
     } else {
-      toast.error(res?.message || `Failed to remove "${targetGear.name}".`);
+      if (res?.isRented) {
+        // Server action archive failed — try via client-side API route (more reliable for auth)
+        try {
+          const archiveRes = await fetch("/api/admin/archive-gear", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ gearId: targetGear.id }),
+            credentials: "include",
+          });
+          const archiveData = await archiveRes.json();
+          if (archiveRes.ok && archiveData.success) {
+            setGearList((prev) =>
+              prev.map((g) =>
+                g.id === targetGear.id ? { ...g, availability: "UNAVAILABLE", stock: 0, availableStock: 0 } : g
+              )
+            );
+            setRentedAlertItem(targetGear);
+            toast.warning(`Item "${targetGear.name}" has customer rental history; marked as UNAVAILABLE & archived.`, { duration: 6000 });
+            return;
+          }
+          console.warn("[archive fallback] Results:", archiveData?.results);
+        } catch (e) {
+          console.error("[archive fallback] fetch failed:", e);
+        }
+        setRentedAlertItem(targetGear);
+        toast.error(res?.message || `Failed to remove "${targetGear.name}".`);
+      } else {
+        toast.error(res?.message || `Failed to remove "${targetGear.name}".`);
+      }
     }
   };
 
@@ -160,6 +242,7 @@ export default function GearModerationTable({ initialGear }: GearModerationTable
                   <th className="py-3.5 px-4">Provider</th>
                   <th className="py-3.5 px-4">Rate / Day</th>
                   <th className="py-3.5 px-4 text-center">Stock</th>
+                  <th className="py-3.5 px-4 text-center">Status</th>
                   <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -226,6 +309,27 @@ export default function GearModerationTable({ initialGear }: GearModerationTable
                         <Boxes className="w-3 h-3 text-zinc-400" />
                         {item.availableStock ?? item.stock} / {item.stock}
                       </span>
+                    </td>
+
+                    {/* Status Toggle */}
+                    <td className="py-3.5 px-4 text-center">
+                      <div className="flex items-center justify-center gap-1.5">
+                        {togglingId === item.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin text-zinc-400" />
+                        ) : (
+                          <select
+                            value={item.availability || "AVAILABLE"}
+                            onChange={(e) => handleUpdateAvailability(item.id, e.target.value)}
+                            disabled={togglingId === item.id}
+                            className="h-8 rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-2 py-0.5 text-xs font-bold text-zinc-900 dark:text-zinc-100 shadow-2xs focus:outline-hidden cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                            title="Change Gear Availability Status"
+                          >
+                          <option value="AVAILABLE">AVAILABLE</option>
+                            <option value="OUT_OF_STOCK">OUT OF STOCK</option>
+                            <option value="MAINTENANCE">MAINTENANCE</option>
+                          </select>
+                        )}
+                      </div>
                     </td>
 
                     {/* Actions */}
@@ -438,6 +542,42 @@ export default function GearModerationTable({ initialGear }: GearModerationTable
                 className="h-8 px-4 text-xs font-bold"
               >
                 Confirm Removal
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: Rented Item Alert Notice */}
+      {rentedAlertItem && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 border border-amber-300 dark:border-amber-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-amber-600 dark:text-amber-400">
+              <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-950/50 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">Item Has Active / Past Rentals!</h3>
+                <p className="text-xs text-amber-600 dark:text-amber-400 font-semibold">Customer Order History Protected</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-amber-50 dark:bg-amber-950/30 rounded-xl border border-amber-200 dark:border-amber-900/50 space-y-2 text-xs text-zinc-700 dark:text-zinc-300">
+              <p>
+                Item <span className="font-bold text-zinc-900 dark:text-zinc-100 font-mono">"{rentedAlertItem.name}"</span> cannot be permanently deleted because customers have rented this item.
+              </p>
+              <p className="font-medium text-amber-800 dark:text-amber-300">
+                ⚠️ The item has been marked as <span className="font-bold underline">UNAVAILABLE</span> with 0 stock and archived from active listings to preserve customer rental records.
+              </p>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <Button
+                size="sm"
+                onClick={() => setRentedAlertItem(null)}
+                className="h-9 px-5 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white"
+              >
+                Got It
               </Button>
             </div>
           </div>

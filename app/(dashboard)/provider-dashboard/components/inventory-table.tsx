@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Edit2, Trash2, Plus, Search, CheckCircle, XCircle, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Edit2, Trash2, Plus, Search, CheckCircle, XCircle, Loader2, ChevronLeft, ChevronRight, AlertTriangle } from "lucide-react";
 
 import { IGear } from "@/types/gear";
 import { deleteProviderGear, updateProviderGear } from "@/service/provider-gear";
@@ -35,6 +35,7 @@ export default function InventoryTable({ initialGear }: InventoryTableProps) {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [rentedAlertItem, setRentedAlertItem] = useState<IGear | null>(null);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -52,14 +53,13 @@ export default function InventoryTable({ initialGear }: InventoryTableProps) {
     currentPage * ITEMS_PER_PAGE
   );
 
-  const handleToggleAvailability = async (id: string, currentStatus: string) => {
-    const newStatus = currentStatus === "AVAILABLE" ? "OUT_OF_STOCK" : "AVAILABLE";
+  const handleUpdateAvailability = async (id: string, newStatus: string) => {
     setTogglingId(id);
     try {
       const response = await updateProviderGear(id, { availability: newStatus });
       if (response && response.success !== false) {
         setGearList((prev) => prev.map((g) => (g.id === id ? { ...g, availability: newStatus } : g)));
-        toast.success(`Status updated to ${newStatus}`);
+        toast.success(`Status updated to ${newStatus.replace(/_/g, " ")}`);
       } else {
         toast.error(response?.message || "Failed to update availability.");
       }
@@ -71,15 +71,68 @@ export default function InventoryTable({ initialGear }: InventoryTableProps) {
   };
 
   const handleDeleteConfirm = async (id: string) => {
+    const targetGear = gearList.find((g) => g.id === id);
     setDeletingId(id);
     try {
       const response = await deleteProviderGear(id);
-      if (response && response.success !== false) {
+
+      // Case 1: Hard delete succeeded — remove from list
+      if (response && response.success !== false && !response.isArchived) {
         setGearList((prev) => prev.filter((g) => g.id !== id));
         toast.success("Gear item deleted successfully.");
-      } else {
-        toast.error(response?.message || "Failed to delete gear.");
+        return;
       }
+
+      // Case 2: Soft-archive succeeded on server — keep item, update its status
+      if (response && response.success !== false && response.isArchived) {
+        const archivedAs = response.archivedAs || "OUT_OF_STOCK";
+        setGearList((prev) =>
+          prev.map((g) =>
+            g.id === id ? { ...g, availability: archivedAs, stock: 0, availableStock: 0 } : g
+          )
+        );
+        if (targetGear) setRentedAlertItem(targetGear);
+        toast.warning(
+          `"${targetGear?.name}" has rental history — marked as ${archivedAs.replace(/_/g, " ")} and archived.`,
+          { duration: 6000 }
+        );
+        return;
+      }
+
+      // Case 3: Server action archive failed — try client-side API route fallback
+      if (targetGear) {
+        try {
+          const archiveRes = await fetch("/api/provider/archive-gear", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ gearId: id }),
+            credentials: "include",
+          });
+          const archiveData = await archiveRes.json();
+
+          if (archiveRes.ok && archiveData.success) {
+            const newAvailability = archiveData.archivedAs || "OUT_OF_STOCK";
+            // Keep item in list, update its status
+            setGearList((prev) =>
+              prev.map((g) =>
+                g.id === id ? { ...g, availability: newAvailability, stock: 0, availableStock: 0 } : g
+              )
+            );
+            setRentedAlertItem(targetGear);
+            toast.warning(
+              `"${targetGear.name}" has rental history — marked as ${newAvailability.replace(/_/g, " ")} and archived.`,
+              { duration: 6000 }
+            );
+            return;
+          }
+
+          console.warn("[provider archive fallback] All attempts failed:", archiveData?.results);
+        } catch (e) {
+          console.error("[provider archive fallback] fetch failed:", e);
+        }
+      }
+
+      toast.error(response?.message || "Failed to delete gear. It may have active rentals.");
     } catch {
       toast.error("Failed to delete gear.");
     } finally {
@@ -87,6 +140,8 @@ export default function InventoryTable({ initialGear }: InventoryTableProps) {
       setConfirmDeleteId(null);
     }
   };
+
+
 
   return (
     <Card className="shadow-md">
@@ -158,24 +213,21 @@ export default function InventoryTable({ initialGear }: InventoryTableProps) {
                       <span className="text-xs text-muted-foreground ml-1">unit(s)</span>
                     </TableCell>
                     <TableCell>
-                      <button
-                        type="button"
-                        onClick={() => handleToggleAvailability(gear.id, gear.availability)}
-                        disabled={togglingId === gear.id}
-                        className="inline-flex items-center gap-1.5 focus:outline-none"
-                      >
-                        {togglingId === gear.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                        ) : gear.availability === "AVAILABLE" ? (
-                          <Badge className="bg-emerald-600 hover:bg-emerald-700 gap-1 cursor-pointer">
-                            <CheckCircle className="w-3 h-3" /> Available
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary" className="gap-1 cursor-pointer text-muted-foreground">
-                            <XCircle className="w-3 h-3" /> Unavailable
-                          </Badge>
-                        )}
-                      </button>
+                      {togglingId === gear.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                      ) : (
+                        <select
+                          value={gear.availability || "AVAILABLE"}
+                          onChange={(e) => handleUpdateAvailability(gear.id, e.target.value)}
+                          disabled={togglingId === gear.id}
+                          className="h-8 rounded-md border border-input bg-background px-2 py-0.5 text-xs font-semibold shadow-sm focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer hover:bg-accent/50 transition-colors"
+                          title="Change Gear Availability Status"
+                        >
+                          <option value="AVAILABLE">AVAILABLE</option>
+                          <option value="OUT_OF_STOCK">OUT OF STOCK</option>
+                          <option value="MAINTENANCE">MAINTENANCE</option>
+                        </select>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
@@ -251,6 +303,42 @@ export default function InventoryTable({ initialGear }: InventoryTableProps) {
             </div>
           </div>
         </>
+      )}
+
+      {/* MODAL: Rented Item Alert Notice */}
+      {rentedAlertItem && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 border border-amber-300 dark:border-amber-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-amber-600 dark:text-amber-400">
+              <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-950/50 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">Item Has Active / Past Rentals!</h3>
+                <p className="text-xs text-amber-600 dark:text-amber-400 font-semibold">Customer Order History Protected</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-amber-50 dark:bg-amber-950/30 rounded-xl border border-amber-200 dark:border-amber-900/50 space-y-2 text-xs text-zinc-700 dark:text-zinc-300">
+              <p>
+                Item <span className="font-bold text-zinc-900 dark:text-zinc-100 font-mono">"{rentedAlertItem.name}"</span> cannot be permanently deleted because customers have rented this item.
+              </p>
+              <p className="font-medium text-amber-800 dark:text-amber-300">
+                ⚠️ The item has been marked as <span className="font-bold underline">UNAVAILABLE</span> with 0 stock and archived from active listings to preserve customer rental records.
+              </p>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <Button
+                size="sm"
+                onClick={() => setRentedAlertItem(null)}
+                className="h-9 px-5 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white"
+              >
+                Got It
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </CardContent>
   </Card>

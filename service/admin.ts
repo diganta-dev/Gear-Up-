@@ -95,7 +95,7 @@ export const updateUserStatus = async (userId: string, isSuspended: boolean) => 
     }
 
     if (res.ok && data.success !== false) {
-      revalidateTag("admin-users");
+      revalidateTag("admin-users", "max");
       revalidatePath("/admin-dashboard/users");
       revalidatePath("/admin-dashboard");
       revalidatePath("/dashboard/admin/users");
@@ -176,7 +176,7 @@ export const updateUserRole = async (userId: string, role: string) => {
     }
 
     if (res.ok && data.success !== false) {
-      revalidateTag("admin-users");
+      revalidateTag("admin-users", "max");
       revalidatePath("/admin-dashboard/users");
       revalidatePath("/admin-dashboard");
       revalidatePath("/dashboard/admin/users");
@@ -193,6 +193,114 @@ export const updateUserRole = async (userId: string, role: string) => {
   }
 };
 
+// Updates availability status of a gear listing by Admin
+export const updateGearAvailabilityAdmin = async (gearId: string, availability: string) => {
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get("accessToken")?.value;
+
+  if (!accessToken) {
+    return { success: false, message: "Unauthorized" };
+  }
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Cookie: `accessToken=${accessToken}`,
+    Authorization: accessToken,
+    authorization: `Bearer ${accessToken}`,
+  };
+
+  const body = JSON.stringify({ availability });
+
+  // Try primary gear endpoint first, then provider endpoint and admin fallbacks
+  const endpoints = [
+    { method: "PATCH", url: `${API_BASE_URL}/api/gear/${gearId}` },
+    { method: "PATCH", url: `${API_BASE_URL}/api/provider/gear/${gearId}` },
+    { method: "PUT",   url: `${API_BASE_URL}/api/gear/${gearId}` },
+    { method: "PUT",   url: `${API_BASE_URL}/api/provider/gear/${gearId}` },
+    { method: "PATCH", url: `${API_BASE_URL}/api/admin/gear/${gearId}` },
+    { method: "PUT",   url: `${API_BASE_URL}/api/admin/gear/${gearId}` },
+  ];
+
+  for (const ep of endpoints) {
+    try {
+      const res = await fetch(ep.url, {
+        method: ep.method,
+        headers,
+        body,
+        cache: "no-store",
+      });
+      const text = await res.text();
+      console.log(`[updateGearAvailability] ${ep.method} ${ep.url} → ${res.status}: ${text.slice(0, 200)}`);
+      if (res.ok) {
+        try { revalidateTag("admin-gear", "max"); } catch {}
+        try { revalidatePath("/admin-dashboard/gear"); } catch {}
+        try { revalidatePath("/admin-dashboard"); } catch {}
+        try { revalidatePath("/provider-dashboard"); } catch {}
+        try { revalidatePath("/gear"); } catch {}
+        let data: any = {};
+        try { data = JSON.parse(text); } catch {}
+        return { success: true, message: data?.message || `Availability updated to ${availability}` };
+      }
+    } catch (e) {
+      console.error(`[updateGearAvailability] ${ep.method} ${ep.url} failed:`, e);
+    }
+  }
+
+  return { success: false, message: "Failed to update availability. All endpoints rejected the request." };
+};
+
+// Soft-archives a gear listing by setting availability to UNAVAILABLE and stock to 0
+export const archiveGearAdmin = async (gearId: string) => {
+
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get("accessToken")?.value;
+
+  if (!accessToken) {
+    return { success: false };
+  }
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Cookie: `accessToken=${accessToken}`,
+    Authorization: accessToken,
+    authorization: `Bearer ${accessToken}`,
+  };
+
+  const archiveBody = JSON.stringify({
+    availability: "UNAVAILABLE",
+    stock: 0,
+    availableStock: 0,
+  });
+
+  // Try multiple PATCH/PUT endpoints — backend may require admin route
+  const endpoints = [
+    { method: "PATCH", url: `${API_BASE_URL}/api/admin/gear/${gearId}` },
+    { method: "PATCH", url: `${API_BASE_URL}/api/gear/${gearId}` },
+    { method: "PUT",   url: `${API_BASE_URL}/api/admin/gear/${gearId}` },
+    { method: "PUT",   url: `${API_BASE_URL}/api/gear/${gearId}` },
+  ];
+
+  for (const ep of endpoints) {
+    try {
+      const patchRes = await fetch(ep.url, {
+        method: ep.method,
+        headers,
+        body: archiveBody,
+        cache: "no-store",
+      });
+      const patchText = await patchRes.text();
+      console.log(`[archiveGear] ${ep.method} ${ep.url} → status=${patchRes.status} body=${patchText.slice(0, 200)}`);
+      if (patchRes.ok) {
+        return { success: true, body: patchText };
+      }
+    } catch (e) {
+      console.error(`[archiveGear] ${ep.method} ${ep.url} failed:`, e);
+    }
+  }
+
+  return { success: false };
+};
+
 // Deletes a gear listing by Admin
 export const deleteGearAdmin = async (gearId: string) => {
   const cookieStore = await cookies();
@@ -202,22 +310,69 @@ export const deleteGearAdmin = async (gearId: string) => {
     return { success: false, message: "You must be logged in as an Admin." };
   }
 
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Cookie: `accessToken=${accessToken}`,
+    Authorization: accessToken,
+    authorization: `Bearer ${accessToken}`,
+  };
+
   try {
     const res = await fetch(`${API_BASE_URL}/api/gear/${gearId}`, {
       method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        Cookie: `accessToken=${accessToken}`,
-      },
+      headers,
       cache: "no-store",
     });
 
     const text = await res.text();
+    let data: any = {};
     try {
-      return JSON.parse(text);
+      data = JSON.parse(text);
     } catch {
-      return { success: res.ok, message: text || "Gear listing removed successfully." };
+      data = { message: text };
     }
+
+    console.log(`[deleteGear] DELETE /api/gear/${gearId} → status=${res.status} body=${text.slice(0, 300)}`);
+
+    const messageString = `${data?.message || ""} ${text || ""}`;
+    const isConstraintOrError =
+      !res.ok ||
+      messageString.toLowerCase().includes("prisma") ||
+      messageString.toLowerCase().includes("foreign key") ||
+      messageString.toLowerCase().includes("rental_order_items") ||
+      messageString.toLowerCase().includes("constraint") ||
+      messageString.toLowerCase().includes("invocation") ||
+      data?.success === false;
+
+    if (isConstraintOrError) {
+      // Soft-archive via dedicated helper that tries multiple endpoints
+      const archiveResult = await archiveGearAdmin(gearId);
+
+      if (archiveResult.success) {
+        try { revalidateTag("admin-gear", "max"); } catch {}
+        try { revalidatePath("/admin-dashboard/gear"); } catch {}
+        try { revalidatePath("/admin-dashboard"); } catch {}
+        try { revalidatePath("/gear"); } catch {}
+        return {
+          success: true,
+          isArchived: true,
+          message: "Item has customer rental history; marked as UNAVAILABLE and archived.",
+        };
+      }
+
+      return {
+        success: false,
+        isRented: true,
+        message: "This gear item has customer rental history and cannot be permanently deleted. Mark it as UNAVAILABLE manually from the edit page.",
+      };
+    }
+
+    try { revalidateTag("admin-gear", "max"); } catch {}
+    try { revalidatePath("/admin-dashboard/gear"); } catch {}
+    try { revalidatePath("/admin-dashboard"); } catch {}
+    try { revalidatePath("/gear"); } catch {}
+
+    return { success: true, message: data?.message || "Gear listing removed successfully." };
   } catch (error) {
     console.error("DELETE GEAR ADMIN ERROR:", error);
     return { success: false, message: "Failed to remove gear listing." };

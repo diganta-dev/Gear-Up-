@@ -3,6 +3,9 @@ import { getGearById, getCategories } from "@/service/gear";
 import { getMe } from "@/service/getme";
 import ProviderGearForm from "@/components/shered/provider-gear-form";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export const metadata = {
   title: "Edit Gear | Provider Dashboard | GearUp",
   description: "Update your listed rental equipment details.",

@@ -22,6 +22,9 @@ import {
   CreditCard,
   Ban,
   CheckCircle2,
+  PackageCheck,
+  RotateCcw,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,13 +37,22 @@ const ITEMS_PER_PAGE = 6;
 
 const RENTAL_STATUSES: { label: string; value: string }[] = [
   { label: "All Statuses", value: "ALL" },
-  { label: "Placed", value: "PLACED text-amber-600" },
+  { label: "Placed", value: "PLACED" },
   { label: "Confirmed", value: "CONFIRMED" },
   { label: "Paid", value: "PAID" },
   { label: "Picked Up", value: "PICKED_UP" },
   { label: "Returned", value: "RETURNED" },
   { label: "Cancelled", value: "CANCELLED" },
 ];
+
+const ORDER_STATUS_LABELS: Record<string, string> = {
+  PLACED: "Placed",
+  CONFIRMED: "Confirmed",
+  PAID: "Paid",
+  PICKED_UP: "Picked Up",
+  RETURNED: "Returned",
+  CANCELLED: "Cancelled",
+};
 
 export default function AdminOrdersTable({ initialRentals }: AdminOrdersTableProps) {
   const [rentals, setRentals] = useState<IRental[]>(initialRentals);
@@ -87,24 +99,32 @@ export default function AdminOrdersTable({ initialRentals }: AdminOrdersTablePro
     });
   };
 
+  // Handle Order Status Update by Admin
+  const handleStatusChange = async (orderId: string, newStatus: RentalStatus) => {
+    setUpdatingId(orderId);
+    try {
+      const res = await updateRentalStatus(orderId, newStatus);
+      if (res?.success !== false) {
+        setRentals((prev) =>
+          prev.map((r) => (r.id === orderId ? { ...r, status: newStatus } : r))
+        );
+        toast.success(`Order #${orderId.slice(-6)} updated to ${newStatus.replace(/_/g, " ")}.`);
+      } else {
+        toast.error(res?.message || "Failed to update order status.");
+      }
+    } catch {
+      toast.error("Failed to update order status.");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   // Handle Order Cancel by Admin
   const handleCancelConfirm = async () => {
     if (!confirmCancelOrder) return;
     const targetOrder = confirmCancelOrder;
-    setUpdatingId(targetOrder.id);
     setConfirmCancelOrder(null);
-
-    const res = await updateRentalStatus(targetOrder.id, "CANCELLED");
-    setUpdatingId(null);
-
-    if (res?.success !== false) {
-      setRentals((prev) =>
-        prev.map((r) => (r.id === targetOrder.id ? { ...r, status: "CANCELLED" as RentalStatus } : r))
-      );
-      toast.success(`Order #${targetOrder.id.slice(-6)} cancelled successfully.`);
-    } else {
-      toast.error(res?.message || "Failed to cancel order.");
-    }
+    await handleStatusChange(targetOrder.id, "CANCELLED" as RentalStatus);
   };
 
   return (
@@ -260,20 +280,72 @@ export default function AdminOrdersTable({ initialRentals }: AdminOrdersTablePro
 
                       {/* Actions Column */}
                       <td className="py-3.5 px-4 text-right">
-                        {order.status !== "CANCELLED" && order.status !== "RETURNED" ? (
-                          <Button
-                            size="xs"
-                            variant="destructive"
-                            disabled={updatingId === order.id}
-                            onClick={() => setConfirmCancelOrder(order)}
-                            className="h-8 px-2.5 text-xs font-semibold"
-                          >
-                            <Ban className="w-3.5 h-3.5 mr-1" />
-                            Cancel
-                          </Button>
-                        ) : (
-                          <span className="text-[11px] text-zinc-400 font-medium font-mono">No Actions</span>
-                        )}
+                        <div className="flex items-center justify-end gap-2">
+                          {updatingId === order.id ? (
+                            <div className="flex items-center gap-1.5 text-xs text-zinc-500">
+                              <Loader2 className="w-4 h-4 animate-spin text-zinc-400" />
+                              <span>Updating...</span>
+                            </div>
+                          ) : (
+                            <>
+                              {/* PLACED → Confirm */}
+                              {order.status === "PLACED" && (
+                                <Button
+                                  size="xs"
+                                  variant="default"
+                                  onClick={() => handleStatusChange(order.id, "CONFIRMED" as RentalStatus)}
+                                  className="h-8 px-2.5 text-xs font-semibold"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                                  Confirm
+                                </Button>
+                              )}
+                              {/* PAID → Picked Up */}
+                              {order.status === "PAID" && (
+                                <Button
+                                  size="xs"
+                                  className="h-8 px-2.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
+                                  onClick={() => handleStatusChange(order.id, "PICKED_UP" as RentalStatus)}
+                                >
+                                  <PackageCheck className="w-3.5 h-3.5 mr-1" />
+                                  Mark Picked Up
+                                </Button>
+                              )}
+                              {/* PICKED_UP → Returned */}
+                              {order.status === "PICKED_UP" && (
+                                <Button
+                                  size="xs"
+                                  variant="secondary"
+                                  onClick={() => handleStatusChange(order.id, "RETURNED" as RentalStatus)}
+                                  className="h-8 px-2.5 text-xs font-semibold"
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                                  Mark Returned
+                                </Button>
+                              )}
+                              {/* Status Select Dropdown */}
+                              <select
+                                value={order.status || "PLACED"}
+                                onChange={(e) => {
+                                  const next = e.target.value as RentalStatus;
+                                  if (next !== order.status) {
+                                    if (next === "CANCELLED") {
+                                      setConfirmCancelOrder(order);
+                                    } else {
+                                      handleStatusChange(order.id, next);
+                                    }
+                                  }
+                                }}
+                                className="h-8 rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-2 py-0.5 text-xs font-bold text-zinc-900 dark:text-zinc-100 shadow-xs focus:outline-hidden cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                                title="Change Order Status"
+                              >
+                                {Object.entries(ORDER_STATUS_LABELS).map(([val, label]) => (
+                                  <option key={val} value={val}>{label}</option>
+                                ))}
+                              </select>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
