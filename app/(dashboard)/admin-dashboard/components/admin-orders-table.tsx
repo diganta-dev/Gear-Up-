@@ -99,20 +99,26 @@ export default function AdminOrdersTable({ initialRentals }: AdminOrdersTablePro
     });
   };
 
-  // Handle Order Status Update by Admin
+  // Handle Order Status Update by Admin with Optimistic UI Update
   const handleStatusChange = async (orderId: string, newStatus: RentalStatus) => {
+    // 1. Optimistically update UI state immediately
+    const previousRentals = [...rentals];
+    setRentals((prev) =>
+      prev.map((r) => (r.id === orderId ? { ...r, status: newStatus } : r))
+    );
     setUpdatingId(orderId);
+
     try {
       const res = await updateRentalStatus(orderId, newStatus);
       if (res?.success !== false) {
-        setRentals((prev) =>
-          prev.map((r) => (r.id === orderId ? { ...r, status: newStatus } : r))
-        );
         toast.success(`Order #${orderId.slice(-6)} updated to ${newStatus.replace(/_/g, " ")}.`);
       } else {
+        // Revert UI on failure
+        setRentals(previousRentals);
         toast.error(res?.message || "Failed to update order status.");
       }
     } catch {
+      setRentals(previousRentals);
       toast.error("Failed to update order status.");
     } finally {
       setUpdatingId(null);

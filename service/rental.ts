@@ -1,6 +1,7 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 const API_BASE_URL = process.env.BACKEND_API_URL || process.env.NEXT_PUBLIC_API_URL || "https://gearupshop.vercel.app";
 
@@ -35,6 +36,7 @@ export const createRental = async (payload: CreateRentalPayload) => {
       headers: {
         "Content-Type": "application/json",
         Cookie: `accessToken=${accessToken}`,
+        Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify(requestBody),
       cache: "no-store",
@@ -42,6 +44,17 @@ export const createRental = async (payload: CreateRentalPayload) => {
 
     const result = await res.json();
     console.log("CREATE RENTAL RESPONSE:", JSON.stringify(result, null, 2));
+
+    // Immediately bust cache so the new order appears in the orders table
+    if (res.ok) {
+      try { revalidateTag("my-rentals", "max"); } catch {}
+      try { revalidatePath("/dashboard/orders"); } catch {}
+      try { revalidatePath("/dashboard"); } catch {}
+      try { revalidateTag("admin-rentals", "max"); } catch {}
+      try { revalidatePath("/admin-dashboard/orders"); } catch {}
+      try { revalidatePath("/provider-dashboard/orders"); } catch {}
+    }
+
     return result;
   } catch (_error) {
     return {

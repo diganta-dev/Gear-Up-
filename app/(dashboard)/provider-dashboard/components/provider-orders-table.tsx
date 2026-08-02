@@ -133,20 +133,23 @@ export default function ProviderOrdersTable({ initialOrders }: ProviderOrdersTab
   );
 
   const executeStatusUpdate = async (action: PendingAction) => {
+    // 1. Optimistically update UI immediately before network call
+    const previousOrders = [...orders];
+    setOrders((prev) =>
+      prev.map((o) => (o.id === action.id ? { ...o, status: action.newStatus } : o))
+    );
     setUpdatingId(action.id);
     setPendingAction(null);
 
     const result = await updateProviderOrderStatus(action.id, action.newStatus);
 
     if (result.success === true) {
-      // Optimistically reflect the change in the local list
-      setOrders((prev) =>
-        prev.map((o) => (o.id === action.id ? { ...o, status: action.newStatus } : o))
-      );
       toast.success(`Order marked as ${action.label}.`);
       // Sync the server component so the next hard reload is consistent
       router.refresh();
     } else {
+      // Revert on failure
+      setOrders(previousOrders);
       toast.error(result.message ?? "Failed to update order status.");
     }
 

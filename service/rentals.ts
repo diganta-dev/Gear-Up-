@@ -24,7 +24,7 @@ export const getMyRentals = async () => {
         "Content-Type": "application/json",
         Cookie: `accessToken=${accessToken}`,
       },
-      next: { revalidate: 15, tags: ["my-rentals"] },
+      next: { revalidate: 0, tags: ["my-rentals"] },
     });
 
     const result = await res.json();
@@ -189,21 +189,18 @@ export const updateProviderOrderStatus = async (
   const headers = {
     "Content-Type": "application/json",
     Cookie: `accessToken=${accessToken}`,
-    Authorization: accessToken,
+    Authorization: `Bearer ${accessToken}`,
     authorization: `Bearer ${accessToken}`,
   };
 
   const statusUpper = status.toUpperCase();
 
+  // Primary endpoint defined in backend: PATCH /api/provider/orders/:id
   const endpoints = [
     { url: `${API_BASE_URL}/api/provider/orders/${id}`, method: "PATCH", body: { status: statusUpper } },
     { url: `${API_BASE_URL}/api/rentals/${id}/status`, method: "PATCH", body: { status: statusUpper } },
-    { url: `${API_BASE_URL}/api/rentals/${id}`, method: "PATCH", body: { status: statusUpper } },
     { url: `${API_BASE_URL}/api/provider/orders/${id}`, method: "PUT", body: { status: statusUpper } },
-    { url: `${API_BASE_URL}/api/rentals/${id}/status`, method: "PUT", body: { status: statusUpper } },
-    { url: `${API_BASE_URL}/api/rentals/${id}`, method: "PUT", body: { status: statusUpper } },
-    { url: `${API_BASE_URL}/api/provider/orders/${id}`, method: "PATCH", body: { rentalStatus: statusUpper } },
-    { url: `${API_BASE_URL}/api/rentals/${id}/status`, method: "PATCH", body: { rentalStatus: statusUpper } },
+    { url: `${API_BASE_URL}/api/rentals/${id}`, method: "PATCH", body: { status: statusUpper } },
   ];
 
   for (const endpoint of endpoints) {
@@ -220,6 +217,7 @@ export const updateProviderOrderStatus = async (
         try { revalidateTag("my-rentals", "max"); } catch {}
         try { revalidatePath("/admin-dashboard/orders"); } catch {}
         try { revalidatePath("/provider-dashboard/orders"); } catch {}
+        try { revalidatePath("/dashboard/orders"); } catch {}
         try { revalidatePath("/dashboard/customer/orders"); } catch {}
         try { revalidatePath("/dashboard"); } catch {}
         const text = await res.text();
