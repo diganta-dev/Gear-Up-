@@ -125,11 +125,11 @@ export default function GearModerationTable({ initialGear }: GearModerationTable
       if (res?.isArchived) {
         setGearList((prev) =>
           prev.map((g) =>
-            g.id === targetGear.id ? { ...g, availability: "UNAVAILABLE", stock: 0, availableStock: 0 } : g
+            g.id === targetGear.id ? { ...g, availability: "OUT_OF_STOCK", stock: 0, availableStock: 0 } : g
           )
         );
         setRentedAlertItem(targetGear);
-        toast.warning(`Item "${targetGear.name}" has customer rental history; marked as UNAVAILABLE & archived.`, { duration: 6000 });
+        toast.warning(`Item "${targetGear.name}" has customer rental history; marked as OUT_OF_STOCK & archived.`, { duration: 6000 });
       } else {
         setGearList((prev) => prev.filter((g) => g.id !== targetGear.id));
         toast.success(`Listing "${targetGear.name}" removed successfully.`);
@@ -148,11 +148,11 @@ export default function GearModerationTable({ initialGear }: GearModerationTable
           if (archiveRes.ok && archiveData.success) {
             setGearList((prev) =>
               prev.map((g) =>
-                g.id === targetGear.id ? { ...g, availability: "UNAVAILABLE", stock: 0, availableStock: 0 } : g
+                g.id === targetGear.id ? { ...g, availability: "OUT_OF_STOCK", stock: 0, availableStock: 0 } : g
               )
             );
             setRentedAlertItem(targetGear);
-            toast.warning(`Item "${targetGear.name}" has customer rental history; marked as UNAVAILABLE & archived.`, { duration: 6000 });
+            toast.warning(`Item "${targetGear.name}" has customer rental history; marked as OUT_OF_STOCK & archived.`, { duration: 6000 });
             return;
           }
           console.warn("[archive fallback] Results:", archiveData?.results);
@@ -324,7 +324,7 @@ export default function GearModerationTable({ initialGear }: GearModerationTable
                             className="h-8 rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-2 py-0.5 text-xs font-bold text-zinc-900 dark:text-zinc-100 shadow-2xs focus:outline-hidden cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                             title="Change Gear Availability Status"
                           >
-                          <option value="AVAILABLE">AVAILABLE</option>
+                            <option value="AVAILABLE">AVAILABLE</option>
                             <option value="OUT_OF_STOCK">OUT OF STOCK</option>
                             <option value="MAINTENANCE">MAINTENANCE</option>
                           </select>

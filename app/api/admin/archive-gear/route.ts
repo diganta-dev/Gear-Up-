@@ -36,8 +36,8 @@ export async function PATCH(request: NextRequest) {
     const endpoints = [
       { method: "PATCH", url: `${API_BASE_URL}/api/admin/gear/${gearId}` },
       { method: "PATCH", url: `${API_BASE_URL}/api/gear/${gearId}` },
-      { method: "PUT",   url: `${API_BASE_URL}/api/admin/gear/${gearId}` },
-      { method: "PUT",   url: `${API_BASE_URL}/api/gear/${gearId}` },
+      { method: "PUT", url: `${API_BASE_URL}/api/admin/gear/${gearId}` },
+      { method: "PUT", url: `${API_BASE_URL}/api/gear/${gearId}` },
     ];
 
     const results: any[] = [];
@@ -53,7 +53,7 @@ export async function PATCH(request: NextRequest) {
       console.log(`[archiveGear API] ${ep.method} ${ep.url} → ${res.status}: ${text.slice(0, 200)}`);
       if (res.ok) {
         let data: any = {};
-        try { data = JSON.parse(text); } catch {}
+        try { data = JSON.parse(text); } catch { }
         return NextResponse.json({ success: true, data, results });
       }
     }

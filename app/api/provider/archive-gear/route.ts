@@ -56,7 +56,7 @@ export async function PATCH(request: NextRequest) {
 
             if (res.ok) {
               let data: any = {};
-              try { data = JSON.parse(text); } catch {}
+              try { data = JSON.parse(text); } catch { }
               return NextResponse.json({
                 success: true,
                 archivedAs: archivePayload.availability,

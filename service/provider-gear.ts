@@ -194,7 +194,7 @@ export const deleteProviderGear = async (id: string) => {
       // Try OUT_OF_STOCK first (providers usually have permission), then UNAVAILABLE (admin-level)
       const archivePayloads = [
         { availability: "OUT_OF_STOCK", stock: 0, availableStock: 0 },
-        { availability: "UNAVAILABLE",  stock: 0, availableStock: 0 },
+        { availability: "UNAVAILABLE", stock: 0, availableStock: 0 },
       ];
 
       for (const payload of archivePayloads) {
@@ -214,9 +214,9 @@ export const deleteProviderGear = async (id: string) => {
         console.log(`[deleteProviderGear archive] PATCH payload=${JSON.stringify(payload)} → status=${archiveRes.status} body=${archiveText.slice(0, 200)}`);
 
         if (archiveRes.ok) {
-          try { revalidatePath("/provider-dashboard"); } catch {}
-          try { revalidatePath("/provider-dashboard/inventory"); } catch {}
-          try { revalidatePath("/gear"); } catch {}
+          try { revalidatePath("/provider-dashboard"); } catch { }
+          try { revalidatePath("/provider-dashboard/inventory"); } catch { }
+          try { revalidatePath("/gear"); } catch { }
           return {
             success: true,
             isArchived: true,
@@ -228,7 +228,7 @@ export const deleteProviderGear = async (id: string) => {
     }
 
     if (res.ok) {
-      try { revalidatePath("/provider-dashboard"); } catch {}
+      try { revalidatePath("/provider-dashboard"); } catch { }
     }
 
     return {

@@ -215,10 +215,10 @@ export const updateGearAvailabilityAdmin = async (gearId: string, availability: 
   const endpoints = [
     { method: "PATCH", url: `${API_BASE_URL}/api/gear/${gearId}` },
     { method: "PATCH", url: `${API_BASE_URL}/api/provider/gear/${gearId}` },
-    { method: "PUT",   url: `${API_BASE_URL}/api/gear/${gearId}` },
-    { method: "PUT",   url: `${API_BASE_URL}/api/provider/gear/${gearId}` },
+    { method: "PUT", url: `${API_BASE_URL}/api/gear/${gearId}` },
+    { method: "PUT", url: `${API_BASE_URL}/api/provider/gear/${gearId}` },
     { method: "PATCH", url: `${API_BASE_URL}/api/admin/gear/${gearId}` },
-    { method: "PUT",   url: `${API_BASE_URL}/api/admin/gear/${gearId}` },
+    { method: "PUT", url: `${API_BASE_URL}/api/admin/gear/${gearId}` },
   ];
 
   for (const ep of endpoints) {
@@ -232,13 +232,13 @@ export const updateGearAvailabilityAdmin = async (gearId: string, availability: 
       const text = await res.text();
       console.log(`[updateGearAvailability] ${ep.method} ${ep.url} → ${res.status}: ${text.slice(0, 200)}`);
       if (res.ok) {
-        try { revalidateTag("admin-gear", "max"); } catch {}
-        try { revalidatePath("/admin-dashboard/gear"); } catch {}
-        try { revalidatePath("/admin-dashboard"); } catch {}
-        try { revalidatePath("/provider-dashboard"); } catch {}
-        try { revalidatePath("/gear"); } catch {}
+        try { revalidateTag("admin-gear", "max"); } catch { }
+        try { revalidatePath("/admin-dashboard/gear"); } catch { }
+        try { revalidatePath("/admin-dashboard"); } catch { }
+        try { revalidatePath("/provider-dashboard"); } catch { }
+        try { revalidatePath("/gear"); } catch { }
         let data: any = {};
-        try { data = JSON.parse(text); } catch {}
+        try { data = JSON.parse(text); } catch { }
         return { success: true, message: data?.message || `Availability updated to ${availability}` };
       }
     } catch (e) {
@@ -249,9 +249,8 @@ export const updateGearAvailabilityAdmin = async (gearId: string, availability: 
   return { success: false, message: "Failed to update availability. All endpoints rejected the request." };
 };
 
-// Soft-archives a gear listing by setting availability to UNAVAILABLE and stock to 0
+// Soft-archives a gear listing by setting availability to OUT_OF_STOCK and stock to 0 in DB
 export const archiveGearAdmin = async (gearId: string) => {
-
   const cookieStore = await cookies();
   const accessToken = cookieStore.get("accessToken")?.value;
 
@@ -262,39 +261,42 @@ export const archiveGearAdmin = async (gearId: string) => {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     Cookie: `accessToken=${accessToken}`,
-    Authorization: accessToken,
+    Authorization: `Bearer ${accessToken}`,
     authorization: `Bearer ${accessToken}`,
   };
 
-  const archiveBody = JSON.stringify({
-    availability: "UNAVAILABLE",
-    stock: 0,
-    availableStock: 0,
-  });
-
-  // Try multiple PATCH/PUT endpoints — backend may require admin route
-  const endpoints = [
-    { method: "PATCH", url: `${API_BASE_URL}/api/admin/gear/${gearId}` },
-    { method: "PATCH", url: `${API_BASE_URL}/api/gear/${gearId}` },
-    { method: "PUT",   url: `${API_BASE_URL}/api/admin/gear/${gearId}` },
-    { method: "PUT",   url: `${API_BASE_URL}/api/gear/${gearId}` },
+  const archivePayloads = [
+    { availability: "OUT_OF_STOCK", stock: 0 },
+    { availability: "OUT_OF_STOCK" },
   ];
 
-  for (const ep of endpoints) {
-    try {
-      const patchRes = await fetch(ep.url, {
-        method: ep.method,
-        headers,
-        body: archiveBody,
-        cache: "no-store",
-      });
-      const patchText = await patchRes.text();
-      console.log(`[archiveGear] ${ep.method} ${ep.url} → status=${patchRes.status} body=${patchText.slice(0, 200)}`);
-      if (patchRes.ok) {
-        return { success: true, body: patchText };
+  const endpoints = [
+    { method: "PATCH", url: `${API_BASE_URL}/api/gear/${gearId}` },
+    { method: "PATCH", url: `${API_BASE_URL}/api/provider/gear/${gearId}` },
+    { method: "PUT",   url: `${API_BASE_URL}/api/gear/${gearId}` },
+    { method: "PUT",   url: `${API_BASE_URL}/api/provider/gear/${gearId}` },
+    { method: "PATCH", url: `${API_BASE_URL}/api/admin/gear/${gearId}` },
+    { method: "PUT",   url: `${API_BASE_URL}/api/admin/gear/${gearId}` },
+  ];
+
+  for (const payload of archivePayloads) {
+    const archiveBody = JSON.stringify(payload);
+    for (const ep of endpoints) {
+      try {
+        const patchRes = await fetch(ep.url, {
+          method: ep.method,
+          headers,
+          body: archiveBody,
+          cache: "no-store",
+        });
+        const patchText = await patchRes.text();
+        console.log(`[archiveGearAdmin] ${ep.method} ${ep.url} payload=${JSON.stringify(payload)} → status=${patchRes.status} body=${patchText.slice(0, 200)}`);
+        if (patchRes.ok) {
+          return { success: true, body: patchText };
+        }
+      } catch (e) {
+        console.error(`[archiveGearAdmin] ${ep.method} ${ep.url} failed:`, e);
       }
-    } catch (e) {
-      console.error(`[archiveGear] ${ep.method} ${ep.url} failed:`, e);
     }
   }
 
@@ -313,7 +315,7 @@ export const deleteGearAdmin = async (gearId: string) => {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     Cookie: `accessToken=${accessToken}`,
-    Authorization: accessToken,
+    Authorization: `Bearer ${accessToken}`,
     authorization: `Bearer ${accessToken}`,
   };
 
@@ -345,32 +347,32 @@ export const deleteGearAdmin = async (gearId: string) => {
       data?.success === false;
 
     if (isConstraintOrError) {
-      // Soft-archive via dedicated helper that tries multiple endpoints
+      // Soft-archive via dedicated helper that sets status to OUT_OF_STOCK and stock to 0 in DB
       const archiveResult = await archiveGearAdmin(gearId);
 
       if (archiveResult.success) {
-        try { revalidateTag("admin-gear", "max"); } catch {}
-        try { revalidatePath("/admin-dashboard/gear"); } catch {}
-        try { revalidatePath("/admin-dashboard"); } catch {}
-        try { revalidatePath("/gear"); } catch {}
+        try { revalidateTag("admin-gear", "max"); } catch { }
+        try { revalidatePath("/admin-dashboard/gear"); } catch { }
+        try { revalidatePath("/admin-dashboard"); } catch { }
+        try { revalidatePath("/gear"); } catch { }
         return {
           success: true,
           isArchived: true,
-          message: "Item has customer rental history; marked as UNAVAILABLE and archived.",
+          message: "Item has customer rental history; marked as OUT_OF_STOCK and archived.",
         };
       }
 
       return {
         success: false,
         isRented: true,
-        message: "This gear item has customer rental history and cannot be permanently deleted. Mark it as UNAVAILABLE manually from the edit page.",
+        message: "This gear item has customer rental history and cannot be permanently deleted. Mark it as OUT_OF_STOCK manually from the edit page.",
       };
     }
 
-    try { revalidateTag("admin-gear", "max"); } catch {}
-    try { revalidatePath("/admin-dashboard/gear"); } catch {}
-    try { revalidatePath("/admin-dashboard"); } catch {}
-    try { revalidatePath("/gear"); } catch {}
+    try { revalidateTag("admin-gear", "max"); } catch { }
+    try { revalidatePath("/admin-dashboard/gear"); } catch { }
+    try { revalidatePath("/admin-dashboard"); } catch { }
+    try { revalidatePath("/gear"); } catch { }
 
     return { success: true, message: data?.message || "Gear listing removed successfully." };
   } catch (error) {
