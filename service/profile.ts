@@ -42,12 +42,28 @@ export const updateProfile = async (payload: UpdateProfilePayload) => {
     { method: "PUT",   url: `${API_BASE_URL}/api/profile` },
   ];
 
+  // Build payload with all common profile image field aliases so whichever field
+  // the backend API / Prisma schema uses (profileImage, profilePicture, image, avatar, profile.profilePicture) gets updated.
+  const bodyPayload = {
+    name: payload.name,
+    profileImage: payload.profileImage,
+    profilePicture: payload.profileImage,
+    image: payload.profileImage,
+    avatar: payload.profileImage,
+    profile: {
+      name: payload.name,
+      profileImage: payload.profileImage,
+      profilePicture: payload.profileImage,
+      image: payload.profileImage,
+    },
+  };
+
   for (const ep of endpoints) {
     try {
       const res = await fetch(ep.url, {
         method: ep.method,
         headers,
-        body: JSON.stringify(payload),
+        body: JSON.stringify(bodyPayload),
         cache: "no-store",
       });
 
