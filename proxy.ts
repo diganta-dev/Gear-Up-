@@ -27,15 +27,17 @@ export async function proxy(request: NextRequest) {
 
      if(!decodedAccessToken?.success && decodedRefreshToken?.success){
         
-        // refresh token
-        const result = await getNewAccessToken()
+        try {
+          // refresh token — wrapped in try/catch so a backend HTML-404 never crashes middleware
+          const result = await getNewAccessToken();
 
-        if(result.success){
-            
-          cookieStore.set("accessToken",result.data.accessToken,{httpOnly:true,maxAge:60*60*24,sameSite:'lax'});   
-          accessToken =  result.data.accessToken
-          decodedAccessToken = await jwtUtils.verifyToken(accessToken as string, process.env.JWT_SECRET as string) as (JwtPayload & { success?: boolean; role?: string }) ;
-
+          if(result.success && result.data?.accessToken){
+            cookieStore.set("accessToken", result.data.accessToken, {httpOnly:true, maxAge:60*60*24, sameSite:'lax'});   
+            accessToken = result.data.accessToken;
+            decodedAccessToken = await jwtUtils.verifyToken(accessToken as string, process.env.JWT_SECRET as string) as (JwtPayload & { success?: boolean; role?: string });
+          }
+        } catch (_err) {
+          // If refresh fails for any reason, continue as unauthenticated
         }
     }
   // If token is invalid/expired, clear the cookie and treat as unauthenticated
