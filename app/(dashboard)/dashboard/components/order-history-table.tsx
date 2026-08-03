@@ -33,8 +33,8 @@ const ITEMS_PER_PAGE = 6;
 function getEffectiveStatus(rental: IRental, localPaid: Record<string, boolean>): RentalStatus {
   const backendStatus = rental.status;
 
-  // 1. If backend already updated to PAID or beyond, trust it
-  if (["PAID", "PICKED_UP", "RETURNED", "CANCELLED"].includes(backendStatus)) {
+  // 1. If backend already updated to CONFIRMED, PAID or beyond, trust it
+  if (["CONFIRMED", "PAID", "PICKED_UP", "RETURNED", "CANCELLED"].includes(backendStatus)) {
     return backendStatus;
   }
 
@@ -144,8 +144,8 @@ export default function OrderHistoryTable({ rentals }: OrderHistoryTableProps) {
           {paginatedRentals.map((rental) => {
             const effectiveStatus = getEffectiveStatus(rental, localPaid);
             const gear = getGearFromRental(rental);
-            const isPaidOrBeyond = ["PAID", "PICKED_UP", "RETURNED"].includes(effectiveStatus);
-            const canPay = !isPaidOrBeyond && ["PLACED", "CONFIRMED"].includes(effectiveStatus);
+            const isPaidOrBeyond = ["CONFIRMED", "PAID", "PICKED_UP", "RETURNED"].includes(effectiveStatus);
+            const canPay = !isPaidOrBeyond && effectiveStatus === "PLACED";
 
             return (
               <div key={rental.id} className="p-4 border rounded-lg space-y-3 bg-card">
@@ -215,8 +215,8 @@ export default function OrderHistoryTable({ rentals }: OrderHistoryTableProps) {
               {paginatedRentals.map((rental) => {
                 const effectiveStatus = getEffectiveStatus(rental, localPaid);
                 const gear = getGearFromRental(rental);
-                const isPaidOrBeyond = ["PAID", "PICKED_UP", "RETURNED"].includes(effectiveStatus);
-                const canPay = !isPaidOrBeyond && ["PLACED", "CONFIRMED"].includes(effectiveStatus);
+                const isPaidOrBeyond = ["CONFIRMED", "PAID", "PICKED_UP", "RETURNED"].includes(effectiveStatus);
+                const canPay = !isPaidOrBeyond && effectiveStatus === "PLACED";
 
                 return (
                   <TableRow key={rental.id}>

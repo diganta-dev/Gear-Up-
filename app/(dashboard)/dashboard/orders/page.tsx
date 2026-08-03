@@ -4,6 +4,9 @@ import OrderHistoryTable from "../components/order-history-table";
 import { redirect } from "next/navigation";
 import { ShoppingBag } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export const metadata = {
   title: "My Orders | GearUp",
   description: "View and manage your rental orders",

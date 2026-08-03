@@ -5,6 +5,9 @@ import { getMe } from "@/service/getme";
 import { getProviderRentals } from "@/service/rentals";
 import ProviderOrdersTable from "../components/provider-orders-table";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export const metadata = {
   title: "Rental Orders | GearUp Provider",
   description: "Manage incoming rental requests, confirm orders, and track equipment status.",

@@ -3,6 +3,9 @@ import { getMe } from "@/service/getme";
 import CustomerOverview from "./components/customer-overview";
 import { redirect } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export const metadata = {
   title: "Dashboard | GearUp",
   description: "Manage your rentals and orders",

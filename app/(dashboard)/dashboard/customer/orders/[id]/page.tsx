@@ -10,6 +10,9 @@ import { Separator } from "@/components/ui/separator";
 import { getRentalById } from "@/service/rentals";
 import { getValidImageUrl } from "@/lib/utils";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export const metadata: Metadata = {
   title: "Rental Details | GearUp",
   description: "View details of your gear rental order.",
