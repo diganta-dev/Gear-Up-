@@ -23,15 +23,26 @@ export default async function OrderDetailsPage(props: PageProps) {
   const params = await props.params;
 
   const res = await getRentalById(params.id);
-  const rental = res?.data;
+  const rawData = res?.data;
+  const rental = rawData?.result || rawData?.rental || rawData?.data || (rawData?.id ? rawData : null);
 
   if (!res?.success && res?.message?.includes("logged in")) {
     redirect("/login");
   }
 
   if (!rental) {
-    // If not found directly, redirect back to order history
-    redirect("/dashboard/orders");
+    return (
+      <div className="container mx-auto px-4 py-16 max-w-md text-center space-y-4">
+        <div className="h-16 w-16 bg-muted rounded-full flex items-center justify-center mx-auto text-2xl">
+          📦
+        </div>
+        <h2 className="text-2xl font-bold">Order Not Found</h2>
+        <p className="text-sm text-muted-foreground">
+          We could not find the details for order <span className="font-mono">#{params.id.substring(0, 8)}</span>. It may belong to another account or have been removed.
+        </p>
+        <Button nativeButton={false} className="w-full" render={<Link href="/dashboard/orders"><ArrowLeft className="w-4 h-4 mr-2" /> View My Orders</Link>} />
+      </div>
+    );
   }
 
   const gear = rental.gearItem || rental.gear;

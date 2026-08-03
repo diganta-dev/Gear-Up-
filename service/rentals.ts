@@ -226,6 +226,8 @@ export const getRentalById = async (id: string) => {
       headers: {
         "Content-Type": "application/json",
         Cookie: `accessToken=${accessToken}`,
+        Authorization: `Bearer ${accessToken}`,
+        authorization: `Bearer ${accessToken}`,
       },
       cache: "no-store",
     });
