@@ -5,7 +5,7 @@ import { getFeaturedGear } from "@/service/gear";
 import GearCard from "@/components/shered/gear-card";
 import { Search, Shield, Zap, RefreshCw, Loader2 } from "lucide-react";
 
-// Async component that fetches gear data — wrapped in Suspense below
+// Async component that fetches gear data — wrapped in Suspense below 
 async function FeaturedGearSection() {
   const gearResponse = await getFeaturedGear(8);
   const featuredGear = gearResponse?.success && Array.isArray(gearResponse.data) ? gearResponse.data.slice(0, 8) : [];
