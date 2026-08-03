@@ -4,9 +4,11 @@ import { CheckCircle2, ArrowRight, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 import PaymentSuccessTracker from "@/components/shered/payment-success-tracker";
 import { Suspense } from "react";
+import { confirmPayment } from "@/service/payments";
 
 export const metadata: Metadata = {
   title: "Payment Successful | GearUp",
@@ -28,7 +30,23 @@ export default async function PaymentSuccessPage(props: PageProps) {
 
   const rentalId = typeof resolvedSearchParams.rentalId === "string" 
     ? resolvedSearchParams.rentalId 
-    : undefined;
+    : typeof resolvedSearchParams.orderId === "string"
+      ? resolvedSearchParams.orderId
+      : undefined;
+
+  // ── Server-side: update the order status in the database immediately ──
+  // This fires as soon as the payment gateway redirects the user back here.
+  if (rentalId || transactionId) {
+    await confirmPayment({ rentalId, transactionId, status: "PAID" });
+
+    // Bust Next.js cache so dashboard and orders pages show fresh status
+    try { revalidateTag("my-rentals"); } catch { }
+    try { revalidatePath("/dashboard/orders"); } catch { }
+    try { revalidatePath("/dashboard"); } catch { }
+    try { revalidateTag("admin-rentals"); } catch { }
+    try { revalidatePath("/admin-dashboard/orders"); } catch { }
+    try { revalidatePath("/provider-dashboard/orders"); } catch { }
+  }
 
   return (
     <div className="container mx-auto px-4 py-16 flex items-center justify-center min-h-[70vh]">

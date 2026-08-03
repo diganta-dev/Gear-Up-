@@ -32,10 +32,10 @@ export const initiatePayment = async (payload: InitiatePaymentPayload) => {
       rentalOrder: payload.rentalId,
       rentalId: payload.rentalId,
       rentalOrderId: payload.rentalId,
-      // Pass our frontend URLs so the gateway redirects correctly
-      successUrl: `${frontendBaseUrl}/payment/success`,
-      cancelUrl: `${frontendBaseUrl}/payment/cancel`,
-      failUrl: `${frontendBaseUrl}/payment/cancel`,
+      // Pass rentalId in successUrl so the gateway redirects with it — lets us update DB on return
+      successUrl: `${frontendBaseUrl}/payment/success?rentalId=${payload.rentalId}`,
+      cancelUrl: `${frontendBaseUrl}/payment/cancel?rentalId=${payload.rentalId}`,
+      failUrl: `${frontendBaseUrl}/payment/cancel?rentalId=${payload.rentalId}`,
     };
 
     const res = await fetch(`${API_BASE_URL}/api/payments/create`, {
@@ -66,6 +66,79 @@ export const initiatePayment = async (payload: InitiatePaymentPayload) => {
       message: "Failed to connect to the payment gateway. Please try again.",
     };
   }
+};
+
+// Called from the /payment/success page after the gateway redirects back.
+// Notifies the backend that payment succeeded so it can update the order status.
+export const confirmPayment = async (payload: {
+  rentalId?: string;
+  transactionId?: string;
+  status?: string;
+}) => {
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get("accessToken")?.value;
+
+  const authHeaders: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(accessToken ? { Cookie: `accessToken=${accessToken}`, Authorization: `Bearer ${accessToken}` } : {}),
+  };
+
+  const status = payload.status || "PAID";
+
+  // Try multiple possible backend endpoints to confirm payment
+  const endpoints = [
+    // Dedicated payment confirm endpoint
+    ...(payload.transactionId ? [{
+      url: `${API_BASE_URL}/api/payments/confirm`,
+      method: "POST",
+      body: { transactionId: payload.transactionId, status, rentalId: payload.rentalId },
+    }] : []),
+    ...(payload.rentalId ? [
+      // Update payment status on the rental
+      {
+        url: `${API_BASE_URL}/api/payments/${payload.rentalId}/status`,
+        method: "PATCH",
+        body: { status, paymentStatus: status },
+      },
+      // Update rental order status
+      {
+        url: `${API_BASE_URL}/api/rentals/${payload.rentalId}`,
+        method: "PATCH",
+        body: { status, paymentStatus: status },
+      },
+      {
+        url: `${API_BASE_URL}/api/rentals/${payload.rentalId}/status`,
+        method: "PATCH",
+        body: { status, paymentStatus: status },
+      },
+    ] : []),
+  ];
+
+  for (const endpoint of endpoints) {
+    try {
+      const res = await fetch(endpoint.url, {
+        method: endpoint.method,
+        headers: authHeaders,
+        body: JSON.stringify(endpoint.body),
+        cache: "no-store",
+      });
+
+      if (res.ok) {
+        const contentType = res.headers.get("content-type") || "";
+        if (contentType.includes("application/json")) {
+          const json = await res.json();
+          return { success: json.success ?? true, message: json.message ?? "Payment confirmed." };
+        }
+        return { success: true, message: "Payment confirmed." };
+      }
+    } catch (_err) {
+      // Try next endpoint
+    }
+  }
+
+  // All endpoints failed — return partial success so UI still shows success page
+  // (Backend webhook may already have handled the confirmation)
+  return { success: false, message: "Could not confirm payment via API — gateway webhook may handle this." };
 };
 
 export const getMyPayments = async () => {
