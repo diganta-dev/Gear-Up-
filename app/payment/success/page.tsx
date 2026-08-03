@@ -40,10 +40,10 @@ export default async function PaymentSuccessPage(props: PageProps) {
     await confirmPayment({ rentalId, transactionId, status: "PAID" });
 
     // Bust Next.js cache so dashboard and orders pages show fresh status
-    try { revalidateTag("my-rentals"); } catch { }
+    try { revalidateTag("my-rentals", "max"); } catch { }
     try { revalidatePath("/dashboard/orders"); } catch { }
     try { revalidatePath("/dashboard"); } catch { }
-    try { revalidateTag("admin-rentals"); } catch { }
+    try { revalidateTag("admin-rentals", "max"); } catch { }
     try { revalidatePath("/admin-dashboard/orders"); } catch { }
     try { revalidatePath("/provider-dashboard/orders"); } catch { }
   }
