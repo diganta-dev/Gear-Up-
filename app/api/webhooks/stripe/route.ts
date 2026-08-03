@@ -19,10 +19,25 @@ async function updateOrderInBackend(rentalId: string, transactionId: string) {
     {
       url: `${BACKEND_API_URL}/api/payments/confirm`,
       method: "POST",
-      body: { rentalId, transactionId, status: "PAID" },
+      body: { rentalId, transactionId, status: "PAID", paymentStatus: "PAID" },
     },
     {
-      url: `${BACKEND_API_URL}/api/payments/${rentalId}/status`,
+      url: `${BACKEND_API_URL}/api/provider/orders/${rentalId}`,
+      method: "PATCH",
+      body: { status: "CONFIRMED", paymentStatus: "PAID" },
+    },
+    {
+      url: `${BACKEND_API_URL}/api/provider/orders/${rentalId}`,
+      method: "PATCH",
+      body: { status: "PAID", paymentStatus: "PAID" },
+    },
+    {
+      url: `${BACKEND_API_URL}/api/rentals/${rentalId}`,
+      method: "PATCH",
+      body: { status: "CONFIRMED", paymentStatus: "PAID" },
+    },
+    {
+      url: `${BACKEND_API_URL}/api/rentals/${rentalId}`,
       method: "PATCH",
       body: { status: "PAID", paymentStatus: "PAID" },
     },
@@ -32,9 +47,14 @@ async function updateOrderInBackend(rentalId: string, transactionId: string) {
       body: { status: "PAID", paymentStatus: "PAID" },
     },
     {
-      url: `${BACKEND_API_URL}/api/rentals/${rentalId}`,
+      url: `${BACKEND_API_URL}/api/rentals/${rentalId}/status`,
       method: "PATCH",
       body: { status: "CONFIRMED", paymentStatus: "PAID" },
+    },
+    {
+      url: `${BACKEND_API_URL}/api/payments/${rentalId}/status`,
+      method: "PATCH",
+      body: { status: "PAID", paymentStatus: "PAID" },
     },
   ];
 
@@ -50,6 +70,8 @@ async function updateOrderInBackend(rentalId: string, transactionId: string) {
       if (res.ok) {
         console.log(`[Stripe Webhook] Order updated via: ${endpoint.url}`);
         return true;
+      } else {
+        console.warn(`[Stripe Webhook] ${endpoint.url} returned status ${res.status}`);
       }
     } catch (err) {
       // Try next endpoint
@@ -97,7 +119,9 @@ export async function POST(request: NextRequest) {
     case "payment_intent.succeeded": {
       const paymentIntent = event.data.object as Stripe.PaymentIntent;
       const rentalId =
-        paymentIntent.metadata?.rentalId || paymentIntent.metadata?.rental_id;
+        paymentIntent.metadata?.rentalId ||
+        paymentIntent.metadata?.rental_id ||
+        paymentIntent.metadata?.rentalOrder;
 
       console.log(
         `[Stripe Webhook] payment_intent.succeeded | rentalId: ${rentalId} | txn: ${paymentIntent.id}`
@@ -116,7 +140,10 @@ export async function POST(request: NextRequest) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
       const rentalId =
-        session.metadata?.rentalId || session.metadata?.rental_id;
+        session.metadata?.rentalId ||
+        session.metadata?.rental_id ||
+        session.metadata?.rentalOrder ||
+        session.client_reference_id;
       const paymentIntentId =
         typeof session.payment_intent === "string"
           ? session.payment_intent
@@ -128,6 +155,10 @@ export async function POST(request: NextRequest) {
 
       if (rentalId) {
         await updateOrderInBackend(rentalId, paymentIntentId);
+      } else {
+        console.warn(
+          "[Stripe Webhook] No rentalId in session metadata — cannot update order."
+        );
       }
       break;
     }

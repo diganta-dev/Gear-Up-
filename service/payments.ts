@@ -87,24 +87,41 @@ export const confirmPayment = async (payload: {
 
   // Try multiple possible backend endpoints to confirm payment
   const endpoints = [
-    // Dedicated payment confirm endpoint
     ...(payload.transactionId ? [{
       url: `${API_BASE_URL}/api/payments/confirm`,
       method: "POST",
       body: { transactionId: payload.transactionId, status, rentalId: payload.rentalId },
     }] : []),
     ...(payload.rentalId ? [
-      // Update payment status on the rental
+      {
+        url: `${API_BASE_URL}/api/payments/confirm`,
+        method: "POST",
+        body: { rentalId: payload.rentalId, transactionId: payload.transactionId || "STRIPE_SUCCESS", status: "PAID" },
+      },
+      {
+        url: `${API_BASE_URL}/api/provider/orders/${payload.rentalId}`,
+        method: "PATCH",
+        body: { status: "CONFIRMED", paymentStatus: "PAID" },
+      },
+      {
+        url: `${API_BASE_URL}/api/provider/orders/${payload.rentalId}`,
+        method: "PATCH",
+        body: { status: "PAID", paymentStatus: "PAID" },
+      },
       {
         url: `${API_BASE_URL}/api/payments/${payload.rentalId}/status`,
         method: "PATCH",
         body: { status, paymentStatus: status },
       },
-      // Update rental order status
       {
         url: `${API_BASE_URL}/api/rentals/${payload.rentalId}`,
         method: "PATCH",
-        body: { status, paymentStatus: status },
+        body: { status: "CONFIRMED", paymentStatus: "PAID" },
+      },
+      {
+        url: `${API_BASE_URL}/api/rentals/${payload.rentalId}`,
+        method: "PATCH",
+        body: { status: "PAID", paymentStatus: "PAID" },
       },
       {
         url: `${API_BASE_URL}/api/rentals/${payload.rentalId}/status`,
