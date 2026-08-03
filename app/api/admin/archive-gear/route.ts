@@ -50,7 +50,6 @@ export async function PATCH(request: NextRequest) {
       });
       const text = await res.text();
       results.push({ endpoint: `${ep.method} ${ep.url}`, status: res.status, body: text.slice(0, 300) });
-      console.log(`[archiveGear API] ${ep.method} ${ep.url} → ${res.status}: ${text.slice(0, 200)}`);
       if (res.ok) {
         let data: any = {};
         try { data = JSON.parse(text); } catch { }

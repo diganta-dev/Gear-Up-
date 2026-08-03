@@ -178,8 +178,6 @@ export const deleteProviderGear = async (id: string) => {
       data = { message: text };
     }
 
-    console.log(`[deleteProviderGear] DELETE /api/gear/${id} → status=${res.status} body=${text.slice(0, 300)}`);
-
     const messageString = `${data?.message || ""} ${text || ""}`;
     const isConstraintOrError =
       !res.ok ||
@@ -211,7 +209,6 @@ export const deleteProviderGear = async (id: string) => {
         });
 
         const archiveText = await archiveRes.text();
-        console.log(`[deleteProviderGear archive] PATCH payload=${JSON.stringify(payload)} → status=${archiveRes.status} body=${archiveText.slice(0, 200)}`);
 
         if (archiveRes.ok) {
           try { revalidatePath("/provider-dashboard"); } catch { }

@@ -1,10 +1,7 @@
-export default function ProfilePage() {
-  return (
-    <div>
-      <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
-      <p className="mt-2 text-muted-foreground">
-        Manage your account settings.
-      </p>
-    </div>
-  );
+import { redirect } from "next/navigation";
+
+// The canonical profile page lives at /profile (inside the (dashboard) group).
+// Keep this route as a redirect so old links continue to work.
+export default function ProfileRedirectPage() {
+  redirect("/profile");
 }

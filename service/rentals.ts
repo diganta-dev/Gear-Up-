@@ -97,7 +97,6 @@ export const getProviderRentals = async (): Promise<IProviderOrder[]> => {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get("accessToken")?.value;
 
-  console.log("[getProviderRentals] accessToken present:", !!accessToken);
   if (!accessToken) return [];
 
   const headers = {
@@ -109,66 +108,37 @@ export const getProviderRentals = async (): Promise<IProviderOrder[]> => {
 
   try {
     const primaryUrl = `${API_BASE_URL}/api/provider/orders`;
-    console.log("[getProviderRentals] Fetching primary:", primaryUrl);
     const res = await fetch(primaryUrl, {
       method: "GET",
       headers,
       cache: "no-store",
     });
 
-    console.log("[getProviderRentals] Primary status:", res.status, res.statusText);
     if (res.ok) {
-      const text = await res.text();
-      console.log("[getProviderRentals] Primary raw response:", text.slice(0, 500));
-      try {
-        const json = JSON.parse(text);
-        const orders = extractOrdersArray(json);
-        console.log("[getProviderRentals] Primary extracted orders count:", orders.length);
-        return orders;
-      } catch (e) {
-        console.error("[getProviderRentals] Primary JSON parse error:", e);
-        return [];
-      }
-    } else {
-      const errText = await res.text();
-      console.warn("[getProviderRentals] Primary endpoint failed:", res.status, errText.slice(0, 300));
+      const json = await res.json();
+      return extractOrdersArray(json);
     }
-  } catch (e) {
-    console.error("[getProviderRentals] Primary endpoint exception:", e);
+  } catch (_e) {
+    // Try fallback
   }
 
   // Fallback to /api/rentals
   try {
     const fallbackUrl = `${API_BASE_URL}/api/rentals`;
-    console.log("[getProviderRentals] Fetching fallback:", fallbackUrl);
     const fallbackRes = await fetch(fallbackUrl, {
       method: "GET",
       headers,
       cache: "no-store",
     });
 
-    console.log("[getProviderRentals] Fallback status:", fallbackRes.status, fallbackRes.statusText);
     if (fallbackRes.ok) {
-      const text = await fallbackRes.text();
-      console.log("[getProviderRentals] Fallback raw response:", text.slice(0, 500));
-      try {
-        const json = JSON.parse(text);
-        const orders = extractOrdersArray(json);
-        console.log("[getProviderRentals] Fallback extracted orders count:", orders.length);
-        return orders;
-      } catch (e) {
-        console.error("[getProviderRentals] Fallback JSON parse error:", e);
-        return [];
-      }
-    } else {
-      const errText = await fallbackRes.text();
-      console.warn("[getProviderRentals] Fallback endpoint failed:", fallbackRes.status, errText.slice(0, 300));
+      const json = await fallbackRes.json();
+      return extractOrdersArray(json);
     }
-  } catch (e) {
-    console.error("[getProviderRentals] Fallback endpoint exception:", e);
+  } catch (_e) {
+    // Ignore error
   }
 
-  console.warn("[getProviderRentals] All endpoints failed — returning empty array");
   return [];
 };
 
@@ -213,13 +183,13 @@ export const updateProviderOrderStatus = async (
       });
 
       if (res.ok) {
-        try { revalidateTag("admin-rentals", "max"); } catch {}
-        try { revalidateTag("my-rentals", "max"); } catch {}
-        try { revalidatePath("/admin-dashboard/orders"); } catch {}
-        try { revalidatePath("/provider-dashboard/orders"); } catch {}
-        try { revalidatePath("/dashboard/orders"); } catch {}
-        try { revalidatePath("/dashboard/customer/orders"); } catch {}
-        try { revalidatePath("/dashboard"); } catch {}
+        try { revalidateTag("admin-rentals", "max"); } catch { }
+        try { revalidateTag("my-rentals", "max"); } catch { }
+        try { revalidatePath("/admin-dashboard/orders"); } catch { }
+        try { revalidatePath("/provider-dashboard/orders"); } catch { }
+        try { revalidatePath("/dashboard/orders"); } catch { }
+        try { revalidatePath("/dashboard/customer/orders"); } catch { }
+        try { revalidatePath("/dashboard"); } catch { }
         const text = await res.text();
         try {
           const json = JSON.parse(text);

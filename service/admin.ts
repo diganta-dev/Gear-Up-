@@ -230,7 +230,6 @@ export const updateGearAvailabilityAdmin = async (gearId: string, availability: 
         cache: "no-store",
       });
       const text = await res.text();
-      console.log(`[updateGearAvailability] ${ep.method} ${ep.url} → ${res.status}: ${text.slice(0, 200)}`);
       if (res.ok) {
         try { revalidateTag("admin-gear", "max"); } catch { }
         try { revalidatePath("/admin-dashboard/gear"); } catch { }
@@ -290,7 +289,6 @@ export const archiveGearAdmin = async (gearId: string) => {
           cache: "no-store",
         });
         const patchText = await patchRes.text();
-        console.log(`[archiveGearAdmin] ${ep.method} ${ep.url} payload=${JSON.stringify(payload)} → status=${patchRes.status} body=${patchText.slice(0, 200)}`);
         if (patchRes.ok) {
           return { success: true, body: patchText };
         }
@@ -333,8 +331,6 @@ export const deleteGearAdmin = async (gearId: string) => {
     } catch {
       data = { message: text };
     }
-
-    console.log(`[deleteGear] DELETE /api/gear/${gearId} → status=${res.status} body=${text.slice(0, 300)}`);
 
     const messageString = `${data?.message || ""} ${text || ""}`;
     const isConstraintOrError =

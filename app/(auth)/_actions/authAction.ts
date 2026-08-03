@@ -25,7 +25,6 @@ export const loginAction = async (prevState: LoginState, formData: FormData) => 
         body: JSON.stringify({ email, password }),
     });
     const result = await res.json();
-    console.log("=== LOGIN API RESPONSE ===", JSON.stringify(result, null, 2));
     if (result.success) {
         const cookieStore = await cookies()
         const isProduction = process.env.NODE_ENV === "production";

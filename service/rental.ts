@@ -29,8 +29,6 @@ export const createRental = async (payload: CreateRentalPayload) => {
       items: [{ gearItemId: payload.gearId, quantity: 1 }],
     };
 
-    console.log("CREATE RENTAL REQUEST:", JSON.stringify(requestBody, null, 2));
-
     const res = await fetch(`${API_BASE_URL}/api/rentals`, {
       method: "POST",
       headers: {
@@ -43,16 +41,15 @@ export const createRental = async (payload: CreateRentalPayload) => {
     });
 
     const result = await res.json();
-    console.log("CREATE RENTAL RESPONSE:", JSON.stringify(result, null, 2));
 
     // Immediately bust cache so the new order appears in the orders table
     if (res.ok) {
-      try { revalidateTag("my-rentals", "max"); } catch {}
-      try { revalidatePath("/dashboard/orders"); } catch {}
-      try { revalidatePath("/dashboard"); } catch {}
-      try { revalidateTag("admin-rentals", "max"); } catch {}
-      try { revalidatePath("/admin-dashboard/orders"); } catch {}
-      try { revalidatePath("/provider-dashboard/orders"); } catch {}
+      try { revalidateTag("my-rentals", "max"); } catch { }
+      try { revalidatePath("/dashboard/orders"); } catch { }
+      try { revalidatePath("/dashboard"); } catch { }
+      try { revalidateTag("admin-rentals", "max"); } catch { }
+      try { revalidatePath("/admin-dashboard/orders"); } catch { }
+      try { revalidatePath("/provider-dashboard/orders"); } catch { }
     }
 
     return result;

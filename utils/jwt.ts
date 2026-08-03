@@ -6,7 +6,6 @@ const verifyToken = async (token: string, secret: string) => {
     const { payload } = await jwtVerify(token, encodedSecret);
     return { success: true, ...payload };
   } catch (error: any) {
-    console.log("JWT Verification Error:", error.message);
     return { success: false, error: error.message };
   }
 }

@@ -52,7 +52,6 @@ export async function PATCH(request: NextRequest) {
             });
             const text = await res.text();
             results.push({ method, url, status: res.status, body: text.slice(0, 300), payload: archivePayload });
-            console.log(`[archiveGear provider] ${method} ${url} payload=${JSON.stringify(archivePayload)} → ${res.status}: ${text.slice(0, 200)}`);
 
             if (res.ok) {
               let data: any = {};
