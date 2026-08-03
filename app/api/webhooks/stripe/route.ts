@@ -9,10 +9,6 @@ const BACKEND_API_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   "https://gearupshop.vercel.app";
 
-// ─── Stripe requires the raw body — disable Next.js body parsing ───
-export const config = {
-  api: { bodyParser: false },
-};
 
 async function updateOrderInBackend(rentalId: string, transactionId: string) {
   const endpoints = [
